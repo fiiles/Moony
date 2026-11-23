@@ -27,7 +27,7 @@ fn rate4(rate: f64) -> f64 {
     (rate * 10_000.0).round() / 10_000.0
 }
 
-/// The USD and DKK rate history (units per 1 EUR), one row per day from 12 days before the
+/// The USD and DKK rate history (units per 1 EUR), one row per published day from 12 days before the
 /// first day of `M60` through today, the current rates fetched "now", and the in-process quote
 /// snapshot loaded from them. Runs first: other-asset and report conversions read these rates.
 pub fn seed_rates(conn: &Connection, opts: &DemoOptions) -> Result<usize> {
@@ -40,11 +40,15 @@ pub fn seed_rates(conn: &Connection, opts: &DemoOptions) -> Result<usize> {
             "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, ?2, ?3)
              ON CONFLICT(date, currency) DO UPDATE SET rate = excluded.rate",
         )?;
+        // the days the ECB published (every weekday after the built-in data), as the app's
+        // own backfill stores them
         let mut day = first;
         while day <= today {
             for (code, series) in RATES {
-                insert.execute(params![day, code, rate4(series(day))])?;
-                rows += 1;
+                if prices::rate_published(code, day) {
+                    insert.execute(params![day, code, rate4(series(day))])?;
+                    rows += 1;
+                }
             }
             day += DAY;
         }
@@ -119,7 +123,9 @@ pub fn seed(conn: &Connection, opts: &DemoOptions, summary: &mut DemoSummary) ->
     ticker_history::record_current_values(conn, today)?;
 
     history_plan::store_rebuild_version(conn)?;
-    history_plan::store_settled_through(conn, yesterday)?;
+    // Settled only through the real data: an online app settles the drift-priced tail from
+    // real closes on its first start; offline nothing is missing.
+    history_plan::store_settled_through(conn, yesterday.min(prices::data_through()))?;
 
     // Net worth in EUR at the stored rates (not the process-wide snapshot)
     let rates: Vec<(String, f64)> = conn

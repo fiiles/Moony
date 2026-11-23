@@ -12,6 +12,11 @@ pub mod history;
 pub mod invest;
 pub mod planning;
 pub mod prices;
+// generated data: real rates such as 1.0472 are not approximations of constants
+#[allow(clippy::approx_constant)]
+#[rustfmt::skip]
+mod prices_data;
+mod refresh;
 pub mod rng;
 pub mod schedule;
 pub mod text;
@@ -457,6 +462,30 @@ mod tests {
         );
         // NVIDIA: 40 bought (today's units), 15 sold
         assert_eq!(quantity(conn, "NVDA"), 25.0);
+        // every trade is booked at the close of a day its instrument traded
+        let mut q = conn
+            .prepare(
+                "SELECT ticker, transaction_date, CAST(price_per_unit AS REAL)
+                 FROM investment_transactions",
+            )
+            .expect("prepare");
+        let trades: Vec<(String, i64, f64)> = q
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
+            .expect("query")
+            .collect::<std::result::Result<_, _>>()
+            .expect("rows");
+        for (ticker, day, price) in &trades {
+            assert_eq!(
+                prices::trading_day(ticker, *day),
+                *day,
+                "{ticker} on a holiday"
+            );
+            let (close, _) = prices::price_on(ticker, *day).expect("price");
+            assert!(
+                (price / close - 1.0).abs() < 0.0005,
+                "{ticker} {price} vs {close}"
+            );
+        }
         // every trade carries the fee
         assert_eq!(
             count(
@@ -646,6 +675,30 @@ mod tests {
 
     // --- derived history ----------------------------------------------------------------------
 
+    /// What the first start plans: nothing while the built-in real data reaches yesterday;
+    /// otherwise only a settle of the days after the data (the drift-priced tail), never a
+    /// full rebuild.
+    fn check_startup_plan(conn: &Connection, now: i64) {
+        use crate::services::history_plan;
+        let yesterday = clock::today(now) - clock::DAY;
+        let plan = history_plan::plan_startup(conn, now).expect("plan");
+        assert!(!plan.one_time, "no full rebuild");
+        if yesterday <= prices::data_through() {
+            assert!(plan.jobs.is_empty(), "{:?}", plan.jobs);
+            assert!(plan.from_day.is_none() && plan.settles_through.is_none());
+        } else {
+            let tail = prices::data_through() + clock::DAY;
+            assert_eq!(plan.from_day, Some(tail));
+            assert_eq!(plan.settles_through, Some(yesterday));
+            assert!(!plan.jobs.is_empty());
+            assert!(
+                plan.jobs.iter().all(|j| j.from_day() >= tail),
+                "{:?}",
+                plan.jobs
+            );
+        }
+    }
+
     fn check_history(conn: &Connection, summary: &DemoSummary, now: i64) {
         use crate::services::{fx_backfill, history_plan};
         let today = clock::today(now);
@@ -694,9 +747,7 @@ mod tests {
             history_plan::stored_settled_through(conn).expect("mark"),
             Some(today - clock::DAY)
         );
-        let plan = history_plan::plan_startup(conn, now).expect("plan");
-        assert!(plan.jobs.is_empty(), "{:?}", plan.jobs);
-        assert!(!plan.one_time && plan.from_day.is_none() && plan.settles_through.is_none());
+        check_startup_plan(conn, now);
         assert_eq!(
             fx_backfill::missing_fx_ranges(conn, today).expect("ranges"),
             Vec::<(i64, i64)>::new()
@@ -1039,5 +1090,17 @@ mod tests {
                 0
             );
         }
+    }
+
+    /// A demo opened after the built-in data ends: the first start settles only the tail.
+    /// The seed runs at the fixed `now` (the services refuse a later one); the plan is asked for
+    /// a later `now`.
+    #[test]
+    fn a_later_start_settles_only_the_tail_after_the_data() {
+        let _serial = serial();
+        let (conn, _) = seeded("en", now_2026());
+        assert!(clock::today(now_2026()) - clock::DAY <= prices::data_through());
+        check_startup_plan(&conn, now_2026());
+        check_startup_plan(&conn, now_2026() + 9 * clock::DAY);
     }
 }

@@ -1,41 +1,52 @@
 //! Built-in prices, FX rates and dividends for the demo instruments.
 //!
-//! Quarter-end anchor prices per instrument by absolute date, approximately the real closes,
-//! from 2020-12-31 through 2025-12-31 (confident through 2024; 2025 values are rougher).
-//! Between anchors the series is interpolated geometrically with a smooth deterministic
-//! bump and a small day-keyed wiggle (a hash of ticker and day, never the shared `Rng`, so
-//! a day's value never depends on call order). After the last anchor a fixed gentle annual
-//! drift continues the series, so any future "today" works.
+//! Real data from the app's own providers, through [`data_through`]: daily closes
+//! (split-adjusted, in the quote currency; crypto in USD), per-share dividends and ECB rates,
+//! generated into `prices_data.rs` by `cargo test --lib refresh_demo_prices -- --ignored`.
+//! A day is valued as the app's history rebuild values it: the last real bar on or before it
+//! (`backfill::price_at_or_before`), so weekends and holidays carry the previous close, and a
+//! day before a series starts takes its first close.
+//!
+//! After the data ends the series continue from the last real close with a fixed gentle annual
+//! drift, a bounded slow wave and a small day-keyed wiggle (a hash of ticker and day, never the
+//! shared `Rng`, so a value never depends on call order); dividends repeat the last real year
+//! with a yearly growth. So any future "today" works, and a refresh of the data replaces the
+//! invented tail.
 
 use super::clock::{day_of, DAY};
+use super::prices_data::{DATA_THROUGH, DIVIDENDS, RATES, SERIES};
 use chrono::{Datelike, NaiveDate};
+use std::collections::HashMap;
 use std::sync::OnceLock;
 
-const N: usize = 21;
-/// Anchor dates: every quarter end from 2020-12-31 to 2025-12-31.
-const ANCHORS: [(i32, u32, u32); N] = [
-    (2020, 12, 31),
-    (2021, 3, 31),
-    (2021, 6, 30),
-    (2021, 9, 30),
-    (2021, 12, 31),
-    (2022, 3, 31),
-    (2022, 6, 30),
-    (2022, 9, 30),
-    (2022, 12, 31),
-    (2023, 3, 31),
-    (2023, 6, 30),
-    (2023, 9, 30),
-    (2023, 12, 31),
-    (2024, 3, 31),
-    (2024, 6, 30),
-    (2024, 9, 30),
-    (2024, 12, 31),
-    (2025, 3, 31),
-    (2025, 6, 30),
-    (2025, 9, 30),
-    (2025, 12, 31),
-];
+/// How a series' closes are stored: `f32` for Yahoo's single-precision closes, `f64` for the
+/// four-decimal ECB rates.
+pub enum Values {
+    F32(&'static [f32]),
+    F64(&'static [f64]),
+}
+
+impl Values {
+    fn to_vec(&self) -> Vec<f64> {
+        match self {
+            Values::F32(v) => v.iter().map(|x| f64::from(*x)).collect(),
+            Values::F64(v) => v.to_vec(),
+        }
+    }
+}
+
+/// One real daily series of `prices_data.rs`: the closes of its bars, and the bar days as a
+/// calendar from `first_day` (every day when `daily`, else weekdays) without the `missing` and
+/// with the `extra` day offsets.
+pub struct Series {
+    pub name: &'static str,
+    pub currency: &'static str,
+    pub first_day: i64,
+    pub daily: bool,
+    pub missing: &'static [u16],
+    pub extra: &'static [u16],
+    pub values: Values,
+}
 
 #[derive(Clone, Copy, PartialEq)]
 enum Kind {
@@ -44,175 +55,99 @@ enum Kind {
     Fx,
 }
 
-struct Instrument {
-    ticker: &'static str,
+impl Kind {
+    /// Annual drift, wiggle and wave of the invented tail.
+    fn tail(self) -> (f64, f64, f64) {
+        match self {
+            Kind::Equity => (0.06, 0.005, 0.03),
+            Kind::Crypto => (0.10, 0.015, 0.08),
+            Kind::Fx => (0.0, 0.0015, 0.02),
+        }
+    }
+}
+
+/// A decoded series.
+struct Decoded {
     currency: &'static str,
     kind: Kind,
-    /// Annual drift after the last anchor.
-    drift: f64,
-    anchors: [f64; N],
+    key: u64,
+    days: Vec<i64>,
+    values: Vec<f64>,
 }
 
-const fn eq(ticker: &'static str, currency: &'static str, anchors: [f64; N]) -> Instrument {
-    Instrument {
-        ticker,
-        currency,
-        kind: Kind::Equity,
-        drift: 0.06,
-        anchors,
+fn is_weekday(day: i64) -> bool {
+    (day.div_euclid(DAY) + 3).rem_euclid(7) < 5
+}
+
+/// Friday for Saturday and Sunday.
+fn weekday_on_or_before(day: i64) -> i64 {
+    let dow = (day.div_euclid(DAY) + 3).rem_euclid(7); // Monday = 0; 1970-01-01 was Thursday
+    if dow >= 5 {
+        day - (dow - 4) * DAY
+    } else {
+        day
     }
 }
 
-const fn crypto(ticker: &'static str, anchors: [f64; N]) -> Instrument {
-    Instrument {
-        ticker,
-        currency: "USD",
-        kind: Kind::Crypto,
-        drift: 0.10,
-        anchors,
-    }
-}
-
-const INSTRUMENTS: &[Instrument] = &[
-    eq(
-        "VWCE.DE",
-        "EUR",
-        [
-            79.0, 85.7, 92.3, 92.4, 100.4, 97.6, 84.7, 82.2, 88.6, 91.5, 98.8, 96.0, 103.6, 117.0,
-            122.5, 124.7, 129.8, 125.6, 128.0, 138.4, 144.0,
-        ],
-    ),
-    eq(
-        "MSFT",
-        "USD",
-        [
-            222.4, 235.8, 270.9, 281.9, 336.3, 308.3, 256.8, 232.9, 239.8, 288.3, 340.5, 315.8,
-            376.0, 420.7, 446.9, 430.3, 421.5, 375.4, 497.4, 517.9, 484.0,
-        ],
-    ),
-    eq(
-        "AAPL",
-        "USD",
-        [
-            132.7, 122.2, 137.0, 141.5, 177.6, 174.6, 136.7, 138.2, 129.9, 164.9, 194.0, 171.2,
-            192.5, 171.5, 210.6, 233.0, 250.4, 222.1, 205.2, 254.6, 272.0,
-        ],
-    ),
-    eq(
-        "ASML.AS",
-        "EUR",
-        [
-            398.5, 518.6, 580.0, 593.0, 619.4, 612.0, 446.5, 487.0, 505.2, 626.0, 618.0, 553.0,
-            701.0, 896.0, 960.0, 744.0, 658.0, 620.0, 700.0, 830.0, 950.0,
-        ],
-    ),
-    eq(
-        "ALV.DE",
-        "EUR",
-        [
-            200.0, 205.0, 211.0, 197.0, 207.0, 218.0, 203.0, 168.0, 200.0, 213.0, 206.0, 220.0,
-            242.0, 272.0, 285.0, 283.0, 285.0, 335.0, 342.0, 350.0, 355.0,
-        ],
-    ),
-    // Fully split-adjusted: the 4:1 of 2021 and the 10:1 of 2024-06-10 are already folded in.
-    eq(
-        "NVDA",
-        "USD",
-        [
-            13.1, 13.3, 18.8, 20.7, 29.4, 27.3, 15.2, 12.1, 14.6, 27.8, 42.3, 43.5, 49.5, 90.4,
-            123.5, 121.4, 134.3, 108.4, 158.2, 186.6, 187.0,
-        ],
-    ),
-    eq(
-        "PYPL",
-        "USD",
-        [
-            234.2, 242.8, 291.5, 260.2, 188.6, 115.6, 69.9, 85.5, 75.9, 76.0, 65.8, 58.4, 61.4,
-            59.8, 67.0, 77.9, 85.4, 65.2, 71.3, 67.1, 58.0,
-        ],
-    ),
-    eq(
-        "GOOGL",
-        "USD",
-        [
-            87.6, 103.7, 134.0, 135.0, 144.9, 139.7, 109.4, 95.7, 88.2, 103.7, 120.2, 131.1, 140.9,
-            150.9, 183.4, 165.0, 189.3, 165.5, 177.9, 243.1, 310.0,
-        ],
-    ),
-    eq(
-        "AMZN",
-        "USD",
-        [
-            162.8, 154.7, 172.0, 164.3, 166.7, 162.0, 106.2, 113.0, 84.0, 103.3, 130.4, 127.1,
-            151.9, 180.4, 193.3, 186.3, 219.4, 190.3, 219.4, 219.6, 230.0,
-        ],
-    ),
-    eq(
-        "SIE.DE",
-        "EUR",
-        [
-            117.0, 138.0, 134.0, 140.0, 152.0, 125.0, 97.0, 100.0, 127.0, 150.0, 151.0, 133.0,
-            170.0, 175.0, 174.0, 173.0, 188.0, 207.0, 213.0, 224.0, 235.0,
-        ],
-    ),
-    // Split-adjusted for the 2:1 of 2023; least certain series, rough levels.
-    eq(
-        "NOVO-B.CO",
-        "DKK",
-        [
-            215.0, 218.0, 255.0, 305.0, 365.0, 360.0, 410.0, 400.0, 420.0, 480.0, 540.0, 590.0,
-            700.0, 780.0, 950.0, 800.0, 500.0, 460.0, 440.0, 330.0, 320.0,
-        ],
-    ),
-    crypto(
-        "BTC",
-        [
-            29000.0, 58800.0, 35000.0, 43800.0, 46300.0, 45500.0, 19800.0, 19400.0, 16500.0,
-            28500.0, 30500.0, 27000.0, 42300.0, 71300.0, 62800.0, 63300.0, 93400.0, 82500.0,
-            107100.0, 114000.0, 88000.0,
-        ],
-    ),
-    crypto(
-        "ETH",
-        [
-            737.0, 1920.0, 2280.0, 3000.0, 3680.0, 3380.0, 1070.0, 1330.0, 1200.0, 1810.0, 1930.0,
-            1670.0, 2280.0, 3500.0, 3400.0, 2650.0, 3330.0, 1820.0, 2520.0, 4140.0, 2950.0,
-        ],
-    ),
-];
-
-/// USD per 1 EUR.
-const USD_PER_EUR: Instrument = Instrument {
-    ticker: "FX:USD",
-    currency: "USD",
-    kind: Kind::Fx,
-    drift: 0.0,
-    anchors: [
-        1.222, 1.173, 1.186, 1.158, 1.137, 1.107, 1.048, 0.980, 1.070, 1.084, 1.091, 1.057, 1.104,
-        1.079, 1.071, 1.113, 1.035, 1.082, 1.172, 1.173, 1.170,
-    ],
-};
-
-/// DKK per 1 EUR (pegged, practically flat).
-const DKK_PER_EUR: Instrument = Instrument {
-    ticker: "FX:DKK",
-    currency: "DKK",
-    kind: Kind::Fx,
-    drift: 0.0,
-    anchors: [
-        7.444, 7.436, 7.436, 7.437, 7.437, 7.439, 7.437, 7.437, 7.437, 7.451, 7.446, 7.457, 7.454,
-        7.457, 7.458, 7.459, 7.458, 7.460, 7.460, 7.462, 7.460,
-    ],
-};
-
-fn anchor_days() -> &'static [i64; N] {
-    static DAYS: OnceLock<[i64; N]> = OnceLock::new();
-    DAYS.get_or_init(|| {
-        let mut out = [0i64; N];
-        for (slot, (y, m, d)) in out.iter_mut().zip(ANCHORS) {
-            *slot = NaiveDate::from_ymd_opt(y, m, d).map(day_of).unwrap_or(0);
+/// The bar days of an encoded series (see [`Series`]), `count` of them.
+pub fn bar_days_of(
+    first_day: i64,
+    daily: bool,
+    missing: &[u16],
+    extra: &[u16],
+    count: usize,
+) -> Vec<i64> {
+    let mut out = Vec::with_capacity(count);
+    let (mut m, mut e) = (0, 0);
+    let mut offset: u16 = 0;
+    while out.len() < count {
+        let day = first_day + i64::from(offset) * DAY;
+        let is_missing = missing.get(m) == Some(&offset);
+        if is_missing {
+            m += 1;
         }
-        out
+        let is_extra = extra.get(e) == Some(&offset);
+        if is_extra {
+            e += 1;
+        }
+        if ((daily || is_weekday(day)) && !is_missing) || is_extra {
+            out.push(day);
+        }
+        offset = match offset.checked_add(1) {
+            Some(next) => next,
+            None => break,
+        };
+    }
+    out
+}
+
+fn decoded() -> &'static HashMap<&'static str, Decoded> {
+    static ALL: OnceLock<HashMap<&'static str, Decoded>> = OnceLock::new();
+    ALL.get_or_init(|| {
+        let mut all = HashMap::new();
+        for (list, fx) in [(SERIES, false), (RATES, true)] {
+            for s in list {
+                let values = s.values.to_vec();
+                let kind = if fx {
+                    Kind::Fx
+                } else if s.name == "BTC" || s.name == "ETH" {
+                    Kind::Crypto
+                } else {
+                    Kind::Equity
+                };
+                all.insert(
+                    s.name,
+                    Decoded {
+                        currency: s.currency,
+                        kind,
+                        key: fnv(s.name) ^ u64::from(fx),
+                        days: bar_days_of(s.first_day, s.daily, s.missing, s.extra, values.len()),
+                        values,
+                    },
+                );
+            }
+        }
+        all
     })
 }
 
@@ -235,142 +170,152 @@ fn unit(key: u64, salt: u64) -> f64 {
     ((h >> 11) as f64) / ((1u64 << 53) as f64) * 2.0 - 1.0
 }
 
-/// Friday for Saturday and Sunday.
-fn weekday_on_or_before(day: i64) -> i64 {
-    let dow = (day.div_euclid(DAY) + 3).rem_euclid(7); // Monday = 0; 1970-01-01 was Thursday
-    if dow >= 5 {
-        day - (dow - 4) * DAY
-    } else {
-        day
+impl Decoded {
+    /// Index of the last real bar on or before `day`.
+    fn bar_index(&self, day: i64) -> Option<usize> {
+        self.days.partition_point(|d| *d <= day).checked_sub(1)
+    }
+
+    /// The real close of `day` (the first close before the series starts).
+    fn real(&self, day: i64) -> f64 {
+        let i = self.bar_index(day).unwrap_or(0);
+        self.values.get(i).copied().unwrap_or(1.0)
+    }
+
+    fn value(&self, day: i64) -> f64 {
+        if day <= DATA_THROUGH {
+            return self.real(day);
+        }
+        let last = self.real(DATA_THROUGH);
+        let d = if self.kind == Kind::Crypto {
+            day
+        } else {
+            weekday_on_or_before(day)
+        };
+        if d <= DATA_THROUGH {
+            return last;
+        }
+        let (drift, wiggle, wave) = self.kind.tail();
+        let years = (d - DATA_THROUGH) as f64 / (365.25 * DAY as f64);
+        let trend = (1.0 + drift).ln() * years
+            + wave * (2.0 * std::f64::consts::PI * years / 0.9).sin() * unit(self.key, 7).signum();
+        last * (trend + unit(self.key, d as u64) * wiggle).exp()
     }
 }
 
-fn series(inst: &Instrument, day: i64) -> f64 {
-    let key = fnv(inst.ticker);
-    let d = if inst.kind == Kind::Crypto {
-        day
-    } else {
-        weekday_on_or_before(day)
-    };
-    let (wiggle, bump, wave) = match inst.kind {
-        Kind::Equity => (0.005, 0.04, 0.03),
-        Kind::Crypto => (0.015, 0.10, 0.08),
-        Kind::Fx => (0.0015, 0.015, 0.02),
-    };
-    let days = anchor_days();
-    let last = N - 1;
-    let base_ln = if d <= days[0] {
-        inst.anchors[0].ln()
-    } else if d >= days[last] {
-        let years = (d - days[last]) as f64 / (365.25 * DAY as f64);
-        let trend = inst.anchors[last].ln() + (1.0 + inst.drift).ln() * years;
-        trend + wave * (2.0 * std::f64::consts::PI * years / 0.9).sin() * unit(key, 7).signum()
-    } else {
-        let i = days.partition_point(|a| *a <= d) - 1;
-        let f = (d - days[i]) as f64 / (days[i + 1] - days[i]) as f64;
-        let (a, b) = (inst.anchors[i].ln(), inst.anchors[i + 1].ln());
-        a + (b - a) * f + (std::f64::consts::PI * f).sin() * bump * unit(key, i as u64 + 1)
-    };
-    base_ln.exp() * (unit(key, d as u64) * wiggle).exp()
+/// UTC midnight of the last day the built-in real data covers.
+pub fn data_through() -> i64 {
+    DATA_THROUGH
 }
 
-/// Close (or crypto spot) of `ticker` on `day` (UTC midnight) and its native currency.
-/// `None` for tickers outside the demo set. Weekends return Friday's value, except crypto.
+/// Close (or crypto spot) of `ticker` on `day` (UTC midnight) and its native currency: the last
+/// real bar on or before the day. `None` for tickers outside the demo set.
 pub fn price_on(ticker: &str, day: i64) -> Option<(f64, &'static str)> {
-    let inst = INSTRUMENTS.iter().find(|i| i.ticker == ticker)?;
-    Some((series(inst, day), inst.currency))
+    let series = decoded().get(ticker).filter(|s| s.kind != Kind::Fx)?;
+    Some((series.value(day), series.currency))
+}
+
+/// The day of the bar that values a trade on `day`: the last real trading day on or before it
+/// (a weekend or a market holiday moves to the session before); after the data ends, Friday
+/// for a weekend (crypto trades every day). `day` itself for unknown tickers.
+pub fn trading_day(ticker: &str, day: i64) -> i64 {
+    let Some(series) = decoded().get(ticker) else {
+        return day;
+    };
+    if day > DATA_THROUGH {
+        return if series.kind == Kind::Crypto {
+            day
+        } else {
+            weekday_on_or_before(day)
+        };
+    }
+    series
+        .bar_index(day)
+        .and_then(|i| series.days.get(i).copied())
+        .unwrap_or(day)
 }
 
 /// Every ticker `price_on` knows.
 pub fn tickers() -> impl Iterator<Item = &'static str> {
-    INSTRUMENTS.iter().map(|i| i.ticker)
+    SERIES.iter().map(|s| s.name)
+}
+
+fn rate(code: &str, day: i64) -> f64 {
+    decoded().get(code).map_or(1.0, |s| s.value(day))
 }
 
 /// USD per 1 EUR on `day`.
 pub fn usd_per_eur(day: i64) -> f64 {
-    series(&USD_PER_EUR, day)
+    rate("USD", day)
 }
 
 /// DKK per 1 EUR on `day`.
 pub fn dkk_per_eur(day: i64) -> f64 {
-    series(&DKK_PER_EUR, day)
+    rate("DKK", day)
 }
 
-/// Pattern of a dividend payer: ex-dates (month, day) each year and per-share amounts by
-/// year in today's units; years after the table grow by `growth`.
-struct Payer {
-    ticker: &'static str,
-    dates: &'static [(u32, u32)],
-    first_year: i32,
-    per_payment: &'static [f64],
-    growth: f64,
+/// Whether the ECB published a rate of `code` on `day` (after the data ends: every weekday).
+pub fn rate_published(code: &str, day: i64) -> bool {
+    if day > DATA_THROUGH {
+        return is_weekday(day);
+    }
+    decoded()
+        .get(code)
+        .is_some_and(|s| s.days.binary_search(&day).is_ok())
 }
 
-const PAYERS: &[Payer] = &[
-    Payer {
-        ticker: "MSFT",
-        dates: &[(2, 19), (5, 21), (8, 20), (11, 19)],
-        first_year: 2021,
-        per_payment: &[0.56, 0.62, 0.68, 0.75, 0.83],
-        growth: 0.10,
-    },
-    Payer {
-        ticker: "AAPL",
-        dates: &[(2, 7), (5, 9), (8, 8), (11, 7)],
-        first_year: 2021,
-        per_payment: &[0.205, 0.22, 0.23, 0.24, 0.25],
-        growth: 0.04,
-    },
-    // Fully split-adjusted (4:1 and 10:1).
-    Payer {
-        ticker: "NVDA",
-        dates: &[(3, 6), (6, 11), (9, 11), (12, 4)],
-        first_year: 2021,
-        per_payment: &[0.004, 0.004, 0.004, 0.0075, 0.01],
-        growth: 0.0,
-    },
-    Payer {
-        ticker: "ASML.AS",
-        dates: &[(2, 3), (5, 2), (7, 29), (10, 28)],
-        first_year: 2021,
-        per_payment: &[1.35, 1.45, 1.52, 1.55, 1.60],
-        growth: 0.05,
-    },
-    Payer {
-        ticker: "ALV.DE",
-        dates: &[(5, 7)],
-        first_year: 2021,
-        per_payment: &[9.60, 10.80, 11.40, 13.80, 15.40],
-        growth: 0.05,
-    },
+/// Yearly growth of the dividends after the real data.
+const DIVIDEND_GROWTH: [(&str, f64); 5] = [
+    ("MSFT", 0.10),
+    ("AAPL", 0.04),
+    ("NVDA", 0.0),
+    ("ASML.AS", 0.05),
+    ("ALV.DE", 0.05),
 ];
 
 /// Per-share dividend events `(ex-day at UTC midnight, amount in the stock's currency,
-/// today's units)` for the demo payers, oldest first, for every year from the payer's first
-/// through the year of `until` (the caller filters the days it needs); empty for other
-/// tickers. Ex-days that fall on a weekend move to the Friday before.
+/// today's units)` for the demo payers, oldest first: the real ones through the data end, then
+/// the last real year repeated every year (ex-days moved off weekends, amounts grown) through
+/// the year of `until`. Empty for other tickers.
 pub fn dividends(ticker: &str, until: i64) -> Vec<(i64, f64)> {
-    let Some(p) = PAYERS.iter().find(|p| p.ticker == ticker) else {
+    let Some((_, real)) = DIVIDENDS.iter().find(|(t, _)| *t == ticker) else {
         return Vec::new();
     };
-    let mut out = Vec::new();
-    let last_year = super::clock::date_of(until).year();
-    for year in p.first_year..=last_year {
-        let idx = (year - p.first_year) as usize;
-        let amount = match p.per_payment.get(idx) {
-            Some(a) => *a,
-            None => {
-                let extra = (idx + 1 - p.per_payment.len()) as i32;
-                p.per_payment.last().copied().unwrap_or(0.0) * (1.0 + p.growth).powi(extra)
+    let growth = DIVIDEND_GROWTH
+        .iter()
+        .find(|(t, _)| *t == ticker)
+        .map_or(0.0, |(_, g)| *g);
+    let mut out: Vec<(i64, f64)> = real.to_vec();
+    let last_year: Vec<(i64, f64)> = real
+        .iter()
+        .filter(|(d, _)| *d > DATA_THROUGH - 365 * DAY)
+        .copied()
+        .collect();
+    let until_year = super::clock::date_of(until).year();
+    for k in 1.. {
+        let mut any = false;
+        for (day, amount) in &last_year {
+            let date = super::clock::date_of(*day);
+            let year = date.year() + k;
+            if year > until_year {
+                continue;
             }
-        };
-        for (m, d) in p.dates {
-            if let Some(date) = NaiveDate::from_ymd_opt(year, *m, *d) {
-                debug_assert!(date.year() == year);
-                out.push((weekday_on_or_before(day_of(date)), amount));
+            any = true;
+            let dom = date
+                .day()
+                .min(super::clock::days_in_month(year, date.month()));
+            if let Some(next) = NaiveDate::from_ymd_opt(year, date.month(), dom) {
+                out.push((
+                    weekday_on_or_before(day_of(next)),
+                    amount * (1.0 + growth).powi(k),
+                ));
             }
         }
+        if !any {
+            break;
+        }
     }
+    out.sort_by_key(|e| e.0);
     out
 }
 
@@ -382,22 +327,31 @@ mod tests {
         day_of(NaiveDate::from_ymd_opt(y, m, d).expect("date"))
     }
 
+    fn year_of(day: i64) -> i32 {
+        super::super::clock::date_of(day).year()
+    }
+
+    /// Positive every day from 2019 to 2032; no day-to-day jump above `max_jump` from the
+    /// last real day on (the real days move as the market did).
     fn check_series(label: &str, max_jump: f64, f: impl Fn(i64) -> f64) {
-        let (start, end) = (ts(2021, 6, 1), ts(2028, 12, 31));
+        let (start, end) = (ts(2019, 1, 1), ts(2032, 12, 31));
+        let tail = data_through();
         let mut prev = f(start);
         let mut day = start;
         while day <= end {
             let v = f(day);
             assert!(v.is_finite() && v > 0.0, "{label} not positive on {day}");
-            let jump = (v / prev - 1.0).abs();
-            assert!(jump < max_jump, "{label} jumps {jump:.3} on day {day}");
+            if day > tail {
+                let jump = (v / prev - 1.0).abs();
+                assert!(jump < max_jump, "{label} jumps {jump:.3} on day {day}");
+            }
             prev = v;
             day += DAY;
         }
     }
 
     #[test]
-    fn every_instrument_is_positive_and_continuous() {
+    fn every_instrument_is_positive_and_continuous_past_the_data() {
         let all: Vec<&str> = tickers().collect();
         assert_eq!(all.len(), 13);
         for t in all {
@@ -409,6 +363,21 @@ mod tests {
     }
 
     #[test]
+    fn the_tail_starts_at_the_last_real_close() {
+        let end = data_through();
+        for t in tickers() {
+            let (last, _) = price_on(t, end).expect("known");
+            let (next, _) = price_on(t, end + DAY).expect("known");
+            let limit = if t == "BTC" || t == "ETH" {
+                0.02
+            } else {
+                0.006
+            };
+            assert!((next / last - 1.0).abs() < limit, "{t}: {last} -> {next}");
+        }
+    }
+
+    #[test]
     fn currencies_and_unknown_tickers() {
         let d = ts(2024, 3, 12);
         assert_eq!(price_on("VWCE.DE", d).map(|p| p.1), Some("EUR"));
@@ -416,6 +385,7 @@ mod tests {
         assert_eq!(price_on("NOVO-B.CO", d).map(|p| p.1), Some("DKK"));
         assert_eq!(price_on("BTC", d).map(|p| p.1), Some("USD"));
         assert!(price_on("NOPE", d).is_none());
+        assert!(price_on("USD", d).is_none(), "rates are not tickers");
     }
 
     #[test]
@@ -425,38 +395,64 @@ mod tests {
         let _ = price_on("MSFT", d);
         let _ = price_on("AAPL", d + DAY);
         assert_eq!(a, price_on("AAPL", d));
+        let later = data_through() + 400 * DAY;
+        assert_eq!(price_on("AAPL", later), price_on("AAPL", later));
         assert_eq!(usd_per_eur(d).to_bits(), usd_per_eur(d).to_bits());
     }
 
     #[test]
-    fn weekends_carry_fridays_value_except_crypto() {
+    fn weekends_and_holidays_carry_the_last_close_except_crypto() {
         let fri = ts(2024, 5, 17);
         assert_eq!(price_on("MSFT", fri + DAY), price_on("MSFT", fri));
         assert_eq!(price_on("MSFT", fri + 2 * DAY), price_on("MSFT", fri));
         assert_ne!(price_on("BTC", fri + DAY), price_on("BTC", fri));
         assert_eq!(usd_per_eur(fri + DAY), usd_per_eur(fri));
+        // Christmas 2024 (a Wednesday): no session, a trade moves to the 24th
+        let xmas = ts(2024, 12, 25);
+        assert_eq!(price_on("MSFT", xmas), price_on("MSFT", xmas - DAY));
+        assert_eq!(trading_day("MSFT", xmas), xmas - DAY);
+        assert_eq!(trading_day("BTC", xmas), xmas);
+        assert_eq!(trading_day("MSFT", fri + 2 * DAY), fri);
+        assert!(!rate_published("USD", xmas) && rate_published("USD", fri));
     }
 
     #[test]
-    fn anchors_are_close_to_the_table() {
-        // Quarter ends can fall on a weekend; compare on a weekday anchor.
-        let (p, _) = price_on("MSFT", ts(2024, 6, 28)).expect("known");
-        assert!((p / 446.9 - 1.0).abs() < 0.02, "{p}");
-        let (n, _) = price_on("NVDA", ts(2024, 6, 3)).expect("known");
-        assert!(n > 100.0 && n < 140.0, "NVDA is split-adjusted, got {n}");
+    fn real_closes_match_the_record() {
+        // Well-known closes, split-adjusted: MSFT 2024-06-28 446.95, NVDA on its split day
+        // 2024-06-10 121.79, BTC on 2024-03-13 about 73 100
+        let (msft, _) = price_on("MSFT", ts(2024, 6, 28)).expect("known");
+        assert!((msft / 446.95 - 1.0).abs() < 0.01, "{msft}");
+        let (nvda, _) = price_on("NVDA", ts(2024, 6, 10)).expect("known");
+        assert!((nvda / 121.79 - 1.0).abs() < 0.01, "{nvda}");
+        let (btc, _) = price_on("BTC", ts(2024, 3, 13)).expect("known");
+        assert!((btc / 73_100.0 - 1.0).abs() < 0.03, "{btc}");
+        // a value at a fixed date equals the table entry
+        let first = &SERIES[0];
+        let (v, _) = price_on(first.name, first.first_day).expect("known");
+        let table = match &first.values {
+            Values::F32(v) => f64::from(v[0]),
+            Values::F64(v) => v[0],
+        };
+        assert_eq!(v.to_bits(), table.to_bits());
     }
 
     #[test]
-    fn the_series_keeps_drifting_past_the_last_anchor() {
-        let a = price_on("VWCE.DE", ts(2026, 1, 2)).expect("known").0;
-        let b = price_on("VWCE.DE", ts(2030, 1, 2)).expect("known").0;
+    fn the_series_keeps_drifting_past_the_data() {
+        let a = price_on("VWCE.DE", data_through()).expect("known").0;
+        let b = price_on("VWCE.DE", data_through() + 4 * 365 * DAY)
+            .expect("known")
+            .0;
         assert!(b > a * 0.7 && b < a * 2.0);
     }
 
     #[test]
     fn every_series_has_a_value_back_to_2019() {
-        // the earliest day a seed needs is 12 days before M60 (late 2020 for a `now` in late
-        // 2025); before the first anchor the series holds its first value
+        // VWCE.DE was listed in July 2019: before that it holds its first close
+        let vwce = price_on("VWCE.DE", ts(2019, 1, 1)).expect("known").0;
+        assert_eq!(
+            Some(vwce),
+            price_on("VWCE.DE", ts(2019, 7, 29)).map(|p| p.0)
+        );
         for day in [ts(2019, 1, 1), ts(2020, 6, 15), ts(2020, 12, 30)] {
             for t in tickers() {
                 assert!(price_on(t, day).is_some_and(|(p, _)| p > 0.0), "{t}");
@@ -466,22 +462,30 @@ mod tests {
     }
 
     #[test]
-    fn dividends_cover_the_payers_in_order() {
+    fn dividends_are_real_then_continue_every_year() {
+        let end_2032 = ts(2032, 12, 31);
         for t in ["MSFT", "AAPL", "NVDA", "ASML.AS", "ALV.DE"] {
-            let ev = dividends(t, ts(2032, 12, 31));
+            let ev = dividends(t, end_2032);
             assert!(ev.len() >= 7, "{t}");
             assert!(ev.windows(2).all(|w| w[0].0 < w[1].0), "{t} ordered");
-            assert!(ev
-                .iter()
-                .all(|(d, a)| *a > 0.0 && (d.div_euclid(DAY) + 3).rem_euclid(7) < 5));
+            assert!(ev.iter().all(|(d, a)| *a > 0.0 && is_weekday(*d)), "{t}");
         }
-        let end_2032 = ts(2032, 12, 31);
-        assert_eq!(dividends("MSFT", end_2032).len(), 4 * 12);
-        assert_eq!(dividends("ALV.DE", end_2032).len(), 12);
+        let per_year = |t: &str, y: i32| {
+            dividends(t, end_2032)
+                .iter()
+                .filter(|(d, _)| year_of(*d) == y)
+                .count()
+        };
+        for y in 2027..=2032 {
+            assert_eq!(per_year("MSFT", y), 4, "MSFT {y}");
+            assert_eq!(per_year("ALV.DE", y), 1, "ALV.DE {y}");
+        }
         assert!(dividends("PYPL", end_2032).is_empty());
         // no fixed horizon: any later year has its events
         let in_2040 = dividends("MSFT", ts(2040, 6, 30));
-        assert_eq!(in_2040.len(), 4 * 20);
-        assert!(in_2040.last().is_some_and(|(d, _)| *d > ts(2040, 11, 1)));
+        assert_eq!(
+            in_2040.iter().filter(|(d, _)| year_of(*d) == 2040).count(),
+            4
+        );
     }
 }

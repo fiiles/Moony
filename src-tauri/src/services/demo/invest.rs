@@ -2,12 +2,12 @@
 //! closed position), the NVIDIA split, dividends, tags, the watchlist and cached quotes; two
 //! crypto holdings; one euro government bond.
 //!
-//! Trades are priced from [`prices::price_on`] with a small deterministic wiggle, so the
-//! history the app derives later (`history.rs`) matches the trade prices.
+//! Trades are booked at the day's real close ([`prices::price_on`], to the cent) on a day the
+//! instrument traded, so the history the app derives (`history.rs`, or the app's own rebuild
+//! from Yahoo) values the trade day at the trade price.
 
 use super::clock::{self, DAY};
 use super::prices;
-use super::rng::Rng;
 use super::schedule::*;
 use super::text::{t, T};
 use super::{DemoOptions, DemoSummary};
@@ -24,10 +24,6 @@ use crate::services::{
 use rusqlite::{params, Connection};
 use std::collections::HashMap;
 
-/// Seed of the trade-price wiggle (its own stream, independent of the bank's).
-const WIGGLE_SEED: u64 = 0x5354_4F43_4B53;
-/// Largest relative deviation of a trade price from the day's close.
-const WIGGLE: f64 = 0.006;
 /// Fee of every stock trade, in the trade currency.
 const FEE: &str = "1";
 
@@ -179,12 +175,11 @@ struct Book<'a> {
     ids: HashMap<&'static str, String>,
     names: HashMap<&'static str, &'static str>,
     first_day: HashMap<&'static str, i64>,
-    rng: Rng,
     trades: usize,
 }
 
 impl Book<'_> {
-    /// One trade at `units_factor` × the day's close (in today's units) with the wiggle.
+    /// One trade at `units_factor` × the day's close (in today's units).
     fn trade(
         &mut self,
         ticker: &'static str,
@@ -195,14 +190,13 @@ impl Book<'_> {
         units_factor: f64,
     ) -> Result<()> {
         let (close, currency) = price(ticker, day)?;
-        let wiggle = self.rng.range(-WIGGLE, WIGGLE);
         let data = InsertInvestmentTransaction {
             investment_id: None,
             tx_type: if sell { "sell" } else { "buy" }.to_string(),
             ticker: ticker.to_string(),
             company_name: company.to_string(),
             quantity: num(quantity),
-            price_per_unit: format!("{:.2}", round(close * units_factor * (1.0 + wiggle), 2)),
+            price_per_unit: format!("{:.2}", round(close * units_factor, 2)),
             currency: currency.to_string(),
             transaction_date: day,
             fee: Some(FEE.to_string()),
@@ -238,7 +232,6 @@ pub fn seed(conn: &Connection, opts: &DemoOptions, summary: &mut DemoSummary) ->
         ids: HashMap::new(),
         names: HashMap::new(),
         first_day: HashMap::new(),
-        rng: Rng::with_seed(WIGGLE_SEED),
         trades: 0,
     };
 
@@ -334,7 +327,7 @@ fn seed_quotes(conn: &Connection, now: i64) -> Result<()> {
     let tx = conn.unchecked_transaction()?;
     for (ticker, short, long, sector, industry, exchange, quote_type) in QUOTES {
         let (close, currency) = price(ticker, today)?;
-        let (previous, _) = price(ticker, trading_day(today - DAY))?;
+        let (previous, _) = price(ticker, trading_day(ticker, today - DAY))?;
         let mut high = f64::MIN;
         let mut low = f64::MAX;
         for n in 0..365 {

@@ -338,14 +338,11 @@ pub struct StockTrade {
     pub units_factor: f64,
 }
 
-/// Friday for Saturday and Sunday (stock exchanges trade on weekdays).
-pub fn trading_day(day: i64) -> i64 {
-    let dow = (day.div_euclid(DAY) + 3).rem_euclid(7); // Monday = 0
-    if dow >= 5 {
-        day - (dow - 4) * DAY
-    } else {
-        day
-    }
+/// The session a trade of `ticker` planned for `day` happens in: the last real trading day
+/// on or before it (weekends and market holidays move back), so the app's own history has a
+/// bar on the trade day.
+pub fn trading_day(ticker: &str, day: i64) -> i64 {
+    prices::trading_day(ticker, day)
 }
 
 /// UTC midnight of the NVIDIA split day.
@@ -357,7 +354,7 @@ pub fn nvda_split_day() -> i64 {
 /// Whether NVIDIA is bought before its split (true for every `now` until about 2028); later
 /// the buy moves after the split (`M24`) and no split is recorded.
 pub fn nvda_bought_before_split(now: i64) -> bool {
-    trading_day(clock::months_ago(now, NVDA_BUY_M, NVDA_DAY)) < nvda_split_day()
+    trading_day(NVDA.0, clock::months_ago(now, NVDA_BUY_M, NVDA_DAY)) < nvda_split_day()
 }
 
 /// The monthly ETF plan, oldest first: `M46` to last month, 3-5 units on the 28th.
@@ -367,7 +364,7 @@ pub fn etf_buys(now: i64) -> Vec<EtfBuy> {
         .rev()
         .map(|m| EtfBuy {
             m,
-            day: trading_day(clock::months_ago(now, m, VWCE_DAY)),
+            day: trading_day(VWCE.0, clock::months_ago(now, m, VWCE_DAY)),
             quantity: rng.int_range(3, 5) as f64,
         })
         .collect()
@@ -382,7 +379,7 @@ pub fn stock_trades(now: i64) -> Vec<StockTrade> {
             out.push(StockTrade {
                 ticker,
                 company,
-                day: trading_day(clock::months_ago(now, *m, *dom)),
+                day: trading_day(ticker, clock::months_ago(now, *m, *dom)),
                 quantity: *quantity,
                 sell: *sell,
                 units_factor: 1.0,
@@ -394,7 +391,7 @@ pub fn stock_trades(now: i64) -> Vec<StockTrade> {
         StockTrade {
             ticker,
             company,
-            day: trading_day(clock::months_ago(now, NVDA_BUY_M, NVDA_DAY)),
+            day: trading_day(ticker, clock::months_ago(now, NVDA_BUY_M, NVDA_DAY)),
             quantity: NVDA_BOUGHT / NVDA_SPLIT_RATIO,
             sell: false,
             units_factor: NVDA_SPLIT_RATIO,
@@ -403,7 +400,7 @@ pub fn stock_trades(now: i64) -> Vec<StockTrade> {
         StockTrade {
             ticker,
             company,
-            day: trading_day(clock::months_ago(now, NVDA_LATE_BUY_M, NVDA_DAY)),
+            day: trading_day(ticker, clock::months_ago(now, NVDA_LATE_BUY_M, NVDA_DAY)),
             quantity: NVDA_BOUGHT,
             sell: false,
             units_factor: 1.0,
@@ -412,7 +409,7 @@ pub fn stock_trades(now: i64) -> Vec<StockTrade> {
     out.push(StockTrade {
         ticker,
         company,
-        day: trading_day(clock::months_ago(now, NVDA_SELL_M, NVDA_DAY)),
+        day: trading_day(ticker, clock::months_ago(now, NVDA_SELL_M, NVDA_DAY)),
         quantity: NVDA_SOLD,
         sell: true,
         units_factor: 1.0,

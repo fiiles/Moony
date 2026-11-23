@@ -79,7 +79,11 @@ pub async fn record_portfolio_snapshot(db: State<'_, Database>) -> Result<()> {
 /// The quotes themselves are read through `get_fx_snapshot`.
 #[tauri::command]
 pub async fn refresh_exchange_rates(app: AppHandle, db: State<'_, Database>) -> Result<()> {
+    // The writes go to the session open when the refresh started: after a lock or a profile
+    // switch (the demo profile closing, ADR 0037) they fail instead of reaching the next database.
+    let pinned = db.current_session();
     let ecb = crate::services::currency::fetch_ecb_rates().await?;
+    let db = &pinned?;
     let rates = ecb.rates;
 
     // Persist latest rates for offline use
@@ -95,7 +99,7 @@ pub async fn refresh_exchange_rates(app: AppHandle, db: State<'_, Database>) -> 
     // the earliest transaction and any tail gap from days the app was closed.
     // Best-effort — a failure only means uncovered days stay without a historical
     // quote (and are reported as missing) until the next refresh.
-    spawn_fx_backfill(app, db.inner().clone());
+    spawn_fx_backfill(app, db.clone());
 
     Ok(())
 }
@@ -523,6 +527,9 @@ pub async fn backfill_stock_ticker_history(
     db: State<'_, Database>,
     ticker: String,
 ) -> Result<BackfillResult> {
+    // Pinned to the session open now: a refresh that outlives a lock or a profile switch (the
+    // demo profile closing, ADR 0037) fails instead of writing into the next database.
+    let db = &db.current_session()?;
     log::debug!(
         "[BACKFILL] On-demand backfill requested for stock ticker: {}",
         ticker
@@ -569,7 +576,7 @@ pub async fn backfill_stock_ticker_history(
     let total_days = ((today_start - from_day) / 86400 + 1) as i32;
 
     // Rebuild this ticker's rows only: the queue owns the portfolio days
-    recalculate_stock_ticker_history(&db, &ticker, effective_from).await?;
+    recalculate_stock_ticker_history(db, &ticker, effective_from).await?;
 
     log::debug!(
         "[BACKFILL] On-demand backfill completed for ticker {}",
@@ -591,6 +598,9 @@ pub async fn backfill_crypto_ticker_history(
     db: State<'_, Database>,
     ticker: String,
 ) -> Result<BackfillResult> {
+    // Pinned to the session open now: a refresh that outlives a lock or a profile switch (the
+    // demo profile closing, ADR 0037) fails instead of writing into the next database.
+    let db = &db.current_session()?;
     log::debug!(
         "[BACKFILL] On-demand backfill requested for crypto ticker: {}",
         ticker
@@ -625,7 +635,7 @@ pub async fn backfill_crypto_ticker_history(
     };
 
     // A holding Yahoo cannot tell apart is left alone (spec D8): the symbol picker fixes it.
-    if crate::services::crypto_symbols::ensure_symbol(&db, &ticker).await?
+    if crate::services::crypto_symbols::ensure_symbol(db, &ticker).await?
         == crate::services::crypto_symbols::Resolved::None
     {
         log::debug!("[BACKFILL] No Yahoo symbol for crypto {}, skipping", ticker);
@@ -648,7 +658,7 @@ pub async fn backfill_crypto_ticker_history(
 
     // Rebuild this ticker's rows only: the queue owns the portfolio days
     history_recalc::rebuild_crypto_ticker(
-        &db,
+        db,
         &ticker,
         effective_from,
         today_start,

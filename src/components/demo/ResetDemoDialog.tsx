@@ -1,6 +1,5 @@
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'wouter';
-import { toast } from 'sonner';
 import { Info, RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -34,9 +33,9 @@ export function ResetDemoDialog({
 
   const confirm = () => {
     resetDemoMutation.mutate(undefined, {
+      // The provider shows "back to its original state"
       onSuccess: () => {
         onOpenChange(false);
-        toast(t('demo.reset.done'));
         setLocation('/');
       },
       // The provider says why and returns to the choice screen

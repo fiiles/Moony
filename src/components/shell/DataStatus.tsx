@@ -63,7 +63,7 @@ export function DataStatus({ override }: { override?: ShellStatus }) {
   const { isSyncing: loadingHistory } = useSyncStatus();
   const recalculating = useHistoryRecalculation().length > 0;
   // The demo profile never syncs (ADR 0037): no sync section, whatever the build offers
-  const { isDemo } = useAuth();
+  const { isDemo, profileOpen } = useAuth();
   const syncFeature = useDeviceSyncFeature() && !isDemo;
   const { data: deviceSync } = useDeviceSyncStatus();
   const now = Math.floor(Date.now() / 1000);
@@ -72,6 +72,8 @@ export function DataStatus({ override }: { override?: ShellStatus }) {
   const { data: priceStatus, refetch } = useQuery({
     queryKey: ['price-status'],
     queryFn: () => portfolioApi.getPriceStatus(),
+    // Only while a profile's database is open (not during a demo close or reset)
+    enabled: profileOpen,
     refetchInterval: 60000,
     staleTime: 30000,
   });

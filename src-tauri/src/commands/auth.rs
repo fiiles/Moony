@@ -1,5 +1,6 @@
 //! Authentication commands
 
+use crate::commands::demo::DemoLifecycle;
 use crate::commands::sync::{password_given, verify_password};
 use crate::db::Database;
 use crate::error::{AppError, Result};
@@ -142,13 +143,17 @@ pub async fn confirm_setup(
     session: State<'_, SessionKey>,
     pending: State<'_, PendingSetup>,
     local_api: State<'_, LocalApiServer>,
+    lifecycle: State<'_, DemoLifecycle>,
     data: ConfirmSetupData,
 ) -> Result<UserProfile> {
     let db_path = get_db_path(&app)?;
     // The wizard closes the demo before it starts; should it still be open, it ends here, before
-    // the new profile takes the connection.
-    if profile_dir::demo_open() {
-        end_session(&app, &db, &session, &local_api).await;
+    // the new profile takes the connection (one demo lifecycle step at a time).
+    {
+        let _one = lifecycle.0.lock().await;
+        if profile_dir::demo_open() {
+            end_session(&app, &db, &session, &local_api).await;
+        }
     }
 
     let profile_data = InsertUserProfile {
@@ -267,7 +272,10 @@ pub async fn logout(
     db: State<'_, Database>,
     session: State<'_, SessionKey>,
     local_api: State<'_, LocalApiServer>,
+    lifecycle: State<'_, DemoLifecycle>,
 ) -> Result<()> {
+    // Never in the middle of a demo open or reset (uncontended for a real profile).
+    let _one = lifecycle.0.lock().await;
     end_session(&app, &db, &session, &local_api).await;
     Ok(())
 }
@@ -275,7 +283,9 @@ pub async fn logout(
 /// Everything a lock does: the MCP server and the sync engine stop, the sync flows in progress
 /// are forgotten, the database closes with the session key, and the decrypted copies go. The demo
 /// profile's close is the same (`commands::demo`), so it also clears the demo flag: a lock in the
-/// demo ends it rather than leaving the app pointed at the demo folder with nothing open.
+/// demo ends it rather than leaving the app pointed at the demo folder with nothing open, and takes
+/// what the demo left in the process with it (`demo::profile::clear_session_state`: its exchange
+/// rates, the categorization engine's layers, queued history work). Callers hold [`DemoLifecycle`].
 pub(crate) async fn end_session(
     app: &AppHandle,
     db: &Database,
@@ -288,7 +298,11 @@ pub(crate) async fn end_session(
     crate::commands::sync_pairing::forget_pairing();
     crate::commands::sync::clear_copied_code(app);
     auth::logout(db, session);
-    profile_dir::set_demo_open(false);
+    crate::services::demo::profile::clear_session_state(
+        &app.state::<crate::commands::categorization::CategorizationState>()
+            .0,
+        &app.state::<crate::services::history_recalc::HistoryRecalc>(),
+    );
     // Decrypted copies opened in other apps go with the session (D3).
     crate::commands::attachments::wipe_open_copies(app);
     // So do WebKit's plaintext copies of the files picked in the phone's upload sheets.

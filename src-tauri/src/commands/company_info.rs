@@ -25,12 +25,14 @@ pub async fn get_stock_company_info(
     }
     .validate()?;
     let ticker = ticker.trim().to_uppercase();
+    // Pinned to the session open now: the metadata fetch never writes into a later profile.
+    let db = &db.current_session()?;
 
     let mut info = db.with_conn(|conn| company_info::read_company_info(conn, &ticker))?;
     let now = chrono::Utc::now().timestamp();
     if refresh && company_info::metadata_is_stale(info.metadata_fetched_at, now) {
         if let Err(e) =
-            price_api::refresh_stock_metadata_yahoo(&db, vec![ticker.clone()], false).await
+            price_api::refresh_stock_metadata_yahoo(db, vec![ticker.clone()], false).await
         {
             // The ticker stays out of the message: only debug may name portfolio data
             log::warn!("[COMPANY INFO] Metadata refresh failed: {}", e);

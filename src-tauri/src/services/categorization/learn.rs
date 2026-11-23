@@ -295,6 +295,9 @@ impl LearnedKey {
 /// sixteen for one airline — the newest decides. Returns the rows read.
 pub fn load_learned_payees(conn: &Connection, engine: &CategorizationEngine) -> Result<usize> {
     let rows = all_rows(conn)?;
+    // The database is the whole truth: a reload replaces what the engine learned before (another
+    // profile's payees, the demo's, or a payee deleted since), it never merges into it.
+    engine.clear_learned();
     let mut loaded = 0;
     for row in &rows {
         let (payee, iban) = (row.payee_key(), row.iban_key());

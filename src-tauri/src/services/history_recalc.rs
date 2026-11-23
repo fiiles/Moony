@@ -306,6 +306,29 @@ impl HistoryRecalc {
         }
     }
 
+    /// Test helper for other modules: queue `jobs` without starting a worker.
+    #[cfg(test)]
+    pub(crate) fn enqueue_for_test(&self, jobs: impl IntoIterator<Item = Job>) {
+        self.enqueue(jobs, None);
+    }
+
+    /// Drop the queued work of a session that ended for good (the demo profile, ADR 0037), so
+    /// none of it runs against the next profile; its completions learn that it failed. A batch
+    /// already running is pinned to its own session and fails there. Returns how many jobs went.
+    pub fn discard_pending(&self) -> usize {
+        let (dropped, completions) = {
+            let mut queue = self.lock();
+            let dropped = queue.pending.len();
+            queue.pending.clear();
+            (dropped, std::mem::take(&mut queue.completions))
+        };
+        let failed = BatchOutcome::default();
+        for completion in completions {
+            completion(&failed);
+        }
+        dropped
+    }
+
     /// Is a rebuild of the ticker (either class) queued behind the running batch?
     fn is_pending_ticker(&self, ticker: &str) -> bool {
         let queue = self.lock();
@@ -383,10 +406,22 @@ pub fn schedule(
     }
 
     let state = state.clone();
-    let db = db.clone();
+    // The worker outlives sessions (later jobs ride along); each batch pins itself below.
+    let db = db.unpinned();
     tauri::async_runtime::spawn(async move {
         let mut guard = WorkerGuard::new(&state);
         while let Some((batch, completions)) = state.take_batch() {
+            // Each batch is pinned to the session open when it is taken: a batch that outlives a
+            // lock or a profile switch fails instead of writing into the next database. With no
+            // session open the batch could only fail; it ends as failed at once.
+            let Ok(db) = db.current_session() else {
+                log::warn!("[RECALC] A history batch was dropped: no profile is open");
+                let failed = BatchOutcome::default();
+                for completion in completions {
+                    completion(&failed);
+                }
+                continue;
+            };
             // Any dated write (a stock import, a backdated balance in a foreign currency, …)
             // may predate the FX timeseries: extend it first so history, positions and cost
             // basis convert at real rates. Without missing ranges this makes no request.
@@ -1059,6 +1094,27 @@ mod tests {
 
     fn crypto(ticker: &str, from: i64) -> Job {
         Job::CryptoTicker(ticker.to_string(), from)
+    }
+
+    #[test]
+    fn discarding_drops_the_queued_jobs_and_fails_their_completions() {
+        let queue = HistoryRecalc::new();
+        let seen = std::sync::Arc::new(std::sync::Mutex::new(None));
+        let record = seen.clone();
+        assert!(queue.enqueue(
+            [stock("VWCE.DE", DAY), crypto("BTC", 2 * DAY)],
+            Some(Box::new(move |outcome: &BatchOutcome| {
+                *record.lock().unwrap() = Some(outcome.clone());
+            })),
+        ));
+
+        assert_eq!(queue.discard_pending(), 2);
+
+        assert!(!queue.is_pending_ticker("VWCE.DE"));
+        assert!(!queue.is_pending_ticker("BTC"));
+        let outcome = seen.lock().unwrap().clone().expect("the completion ran");
+        assert!(!outcome.days_ok, "it learned that the work did not run");
+        assert!(queue.take_batch().is_none(), "nothing left for the worker");
     }
 
     #[test]

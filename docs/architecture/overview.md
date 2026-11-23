@@ -204,7 +204,10 @@ real folder. `services/demo/profile.rs` creates (generator `services::demo::seed
 thin commands are `demo_status` / `demo_open` / `demo_reset` / `demo_close` / `demo_discard`
 (`demoApi`). While it is open, sync, the MCP server, biometric enable, backup and restore, the
 password, recovery and account deletion refuse with `auth.notInDemo`, and no `backup_stale`
-reminder is produced. The demo is deleted once a real profile exists (after `confirm_setup`, after
+reminder is produced. The lifecycle commands, `logout` and `confirm_setup`'s demo end run one at a
+time (`DemoLifecycle`); the end of a demo session also empties the exchange-rate store, the
+categorization engine and the queued history work (`demo::profile::clear_session_state`), and
+background refreshes pin themselves to the session they started in. The demo is deleted once a real profile exists (after `confirm_setup`, after
 `restore_backup`, at startup). Frontend: `demoApi.status()` on start (`active` recovers an open demo
 after a webview reload); auto-lock is off in the demo.
 

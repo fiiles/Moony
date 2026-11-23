@@ -58,6 +58,12 @@ interface PendingRecover {
 type AuthContextType = {
   user: UserProfile | null;
   appStatus: AppStatus;
+  /**
+   * A profile's database is open and stays open: unlocked, and no demo close, reset or discard is
+   * under way. Queries that read the database gate on it, so the first-run screens and the demo's
+   * transitions issue no command against a closed database.
+   */
+  profileOpen: boolean;
   isLoading: boolean;
   error: Error | null;
   setupMutation: UseMutationResult<
@@ -156,6 +162,16 @@ async function readDemoStatus(): Promise<DemoStatus | null> {
   }
 }
 
+/** The open demo's profile after a webview reload, or null when it cannot be read. */
+async function readOpenDemoProfile(): Promise<UserProfile | null> {
+  try {
+    return await authApi.getProfile();
+  } catch (error) {
+    console.error('The open demo profile could not be read:', error);
+    return null;
+  }
+}
+
 function storedDemoFrom(status: DemoStatus | null): StoredDemo {
   return status
     ? { exists: status.exists, lastOpenedAt: status.lastOpenedAt }
@@ -182,6 +198,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isDemo, setIsDemo] = useState(false);
   const [storedDemo, setStoredDemo] = useState<StoredDemo | null>(null);
   const [wizardEntry, setWizardEntry] = useState<WizardEntry | null>(null);
+  // A demo close, reset or discard is running: its database is closing or being replaced.
+  const [demoSwitching, setDemoSwitching] = useState(false);
+  const profileOpen = appStatus === 'unlocked' && !demoSwitching;
 
   // Fetch user profile automatically when unlocked
   const { data: user = null, isLoading: isProfileLoading } = useQuery({
@@ -203,7 +222,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!hasSetup) {
           // No real profile: the demo may be open (a webview reload while in it) or stored.
           const demo = DEMO_AVAILABLE ? await readDemoStatus() : null;
-          if (demo?.active) {
+          // `active` means the demo's database is open; should its profile still not read (the
+          // demo closed meanwhile), the choice screen is the safe place to land.
+          const demoProfile = demo?.active ? await readOpenDemoProfile() : null;
+          if (demo && demoProfile) {
+            queryClient.setQueryData(['user-profile'], demoProfile);
             setIsDemo(true);
             setStoredDemo(storedDemoFrom(demo));
             setAppStatus('unlocked');
@@ -483,6 +506,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const closeDemoMutation = useMutation<DemoStatus | null, Error, DemoExit>({
+    onMutate: () => setDemoSwitching(true),
+    onSettled: () => setDemoSwitching(false),
     mutationFn: async () => {
       await demoApi.close();
       return readDemoStatus();
@@ -501,8 +526,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const resetDemoMutation = useMutation<UserProfile, Error, void>({
+    onMutate: () => setDemoSwitching(true),
+    onSettled: () => setDemoSwitching(false),
     mutationFn: () => demoApi.reset(),
     onSuccess: (profile) => {
+      // Here, not in the dialog's own callback: the provider is mounted whatever closes meanwhile.
+      toast(tc('demo.reset.done'));
       setStoredDemo({ exists: true, lastOpenedAt: Math.floor(Date.now() / 1000) });
       queryClient.setQueryData(['user-profile'], profile);
       // A new dataset under the same open profile: every other query starts over (active ones
@@ -521,6 +550,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const discardDemoMutation = useMutation<void, Error, void>({
+    onMutate: () => setDemoSwitching(true),
+    onSettled: () => setDemoSwitching(false),
     mutationFn: () => demoApi.discard(),
     onSuccess: () => {
       setStoredDemo({ exists: false, lastOpenedAt: null });
@@ -533,6 +564,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onError: (error) => {
       toast.error(t('demo.toast.discardFailed'), { description: translateApiError(error, tc) });
+      // The backend closed an open demo before the delete failed: leave it here too.
+      if (isDemo) {
+        queryClient.clear();
+        leaveDemoState();
+      }
     },
   });
 
@@ -556,6 +592,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         appStatus,
+        profileOpen,
         isLoading,
         error,
         setupMutation,

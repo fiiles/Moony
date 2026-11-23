@@ -1,19 +1,23 @@
 //! The demo profile (ADR 0037): thin commands over `services::demo::profile`. The demo opens with
 //! no password, lives in `<app data folder>/demo`, and is offered only while no real profile exists.
+//!
+//! The lifecycle commands (open, reset, close, discard) and every other end of a session (`logout`,
+//! `confirm_setup` ending a demo still open) run one at a time behind [`DemoLifecycle`], so a close
+//! can never slip into a reset and leave a demo database open with the flag cleared.
 
 use tauri::{AppHandle, State};
 
 use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::{DemoStatus, UserProfile};
-use crate::services::demo::profile;
+use crate::services::demo::profile::{self, DEMO_UNAVAILABLE};
 use crate::services::local_api::LocalApiServer;
 use crate::services::session_key::SessionKey;
 use crate::services::{auth, profile_dir};
 
-/// Why the demo cannot be opened or reset: a real profile exists or is unlocked, or (for a reset)
-/// the demo is not the open profile.
-const DEMO_UNAVAILABLE: &str = "auth.demoUnavailable";
+/// Managed state: held for the whole of a demo lifecycle command and of a session end.
+#[derive(Default)]
+pub struct DemoLifecycle(pub tauri::async_runtime::Mutex<()>);
 
 fn now() -> i64 {
     chrono::Utc::now().timestamp()
@@ -51,23 +55,20 @@ pub async fn demo_status(app: AppHandle) -> Result<DemoStatus> {
 pub async fn demo_open(
     app: AppHandle,
     db: State<'_, Database>,
+    lifecycle: State<'_, DemoLifecycle>,
     language: String,
 ) -> Result<UserProfile> {
+    let _one = lifecycle.0.lock().await;
     let real = profile_dir::real_dir(&app)?;
     if profile_dir::demo_open() {
         return auth::get_user_profile(&db)?
             .ok_or_else(|| AppError::Internal("The demo profile has no profile row".into()));
     }
-    if auth::is_authenticated() || auth::database_exists(&crate::commands::auth::get_db_path(&app)?)
-    {
-        return Err(AppError::Auth(DEMO_UNAVAILABLE.into()));
-    }
-    let demo_dir = profile_dir::demo_dir_in(&real);
-    // The gates hold from before the demo database opens.
-    profile_dir::set_demo_open(true);
     let worker = (*db).clone();
-    let opened = blocking(move || profile::open(&worker, &demo_dir, &language, now())).await;
-    let profile = opened.inspect_err(|_| profile_dir::set_demo_open(false))?;
+    let authenticated = auth::is_authenticated();
+    let profile =
+        blocking(move || profile::open_session(&worker, &real, &language, now(), authenticated))
+            .await?;
     auth::set_authenticated(true);
     after_open(&app, &db);
     Ok(profile)
@@ -81,7 +82,9 @@ pub async fn demo_reset(
     db: State<'_, Database>,
     session: State<'_, SessionKey>,
     local_api: State<'_, LocalApiServer>,
+    lifecycle: State<'_, DemoLifecycle>,
 ) -> Result<UserProfile> {
+    let _one = lifecycle.0.lock().await;
     if !profile_dir::demo_open() {
         return Err(AppError::Auth(DEMO_UNAVAILABLE.into()));
     }
@@ -109,21 +112,26 @@ pub async fn demo_close(
     db: State<'_, Database>,
     session: State<'_, SessionKey>,
     local_api: State<'_, LocalApiServer>,
+    lifecycle: State<'_, DemoLifecycle>,
 ) -> Result<()> {
+    let _one = lifecycle.0.lock().await;
     if profile_dir::demo_open() {
         crate::commands::auth::end_session(&app, &db, &session, &local_api).await;
     }
     Ok(())
 }
 
-/// Delete the stored demo ("Začít znovu s původními daty"); an open demo is closed first.
+/// Delete the stored demo ("Začít znovu s původními daty"); an open demo is closed first, so a
+/// failed delete still leaves it closed.
 #[tauri::command]
 pub async fn demo_discard(
     app: AppHandle,
     db: State<'_, Database>,
     session: State<'_, SessionKey>,
     local_api: State<'_, LocalApiServer>,
+    lifecycle: State<'_, DemoLifecycle>,
 ) -> Result<()> {
+    let _one = lifecycle.0.lock().await;
     if profile_dir::demo_open() {
         crate::commands::auth::end_session(&app, &db, &session, &local_api).await;
     }

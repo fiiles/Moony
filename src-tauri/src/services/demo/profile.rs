@@ -22,13 +22,19 @@ use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::{DemoStatus, InsertUserProfile, UserProfile};
 use crate::services::backup::DB_FILE_NAME;
+use crate::services::categorization::engine::CategorizationEngine;
 use crate::services::demo::{self, text::LANGUAGES, DemoOptions};
-use crate::services::{auth, profile_dir};
+use crate::services::history_recalc::HistoryRecalc;
+use crate::services::{auth, fx, profile_dir};
 
 /// The demo databases' SQLCipher key, in the `'hex'` form `Database::create_with_key` takes. It is
 /// the bytes of `moony-demo-profile-not-a-secret.` and NOT a secret: the demo holds synthetic data
 /// only, and the key is the same in every installation.
 pub const DEMO_KEY_HEX: &str = "'6d6f6f6e792d64656d6f2d70726f66696c652d6e6f742d612d7365637265742e'";
+
+/// Why the demo cannot be opened or reset: a real profile exists or is unlocked, or (for a reset)
+/// the demo is not the open profile.
+pub const DEMO_UNAVAILABLE: &str = "auth.demoUnavailable";
 
 /// The completeness marker and state file inside the demo folder, written last.
 pub const STATE_FILE: &str = "demo-profile.json";
@@ -67,7 +73,9 @@ pub fn language_code(language: &str) -> &'static str {
 }
 
 /// Whether a complete demo is stored and when it was last opened. A demo next to a real profile
-/// counts as none (it is deleted at the next start); `active` is the process-wide flag.
+/// counts as none (it is deleted at the next start). `active` only once the demo is really open:
+/// the flag and the authenticated session together (during generation the flag alone is set, and
+/// a webview reloaded then must not take the app for open).
 pub fn status(real_dir: &Path, demo_dir: &Path) -> DemoStatus {
     let state = if real_profile_exists(real_dir) {
         None
@@ -77,8 +85,67 @@ pub fn status(real_dir: &Path, demo_dir: &Path) -> DemoStatus {
     DemoStatus {
         exists: state.is_some(),
         last_opened_at: state.map(|s| s.last_opened_at),
-        active: profile_dir::demo_open(),
+        active: profile_dir::demo_open() && auth::is_authenticated(),
     }
+}
+
+/// Whether the demo may open: never while a real profile is unlocked (`authenticated`) or exists
+/// on disk.
+pub fn may_open(real_dir: &Path, authenticated: bool) -> Result<()> {
+    if authenticated || real_profile_exists(real_dir) {
+        return Err(AppError::Auth(DEMO_UNAVAILABLE.into()));
+    }
+    Ok(())
+}
+
+/// Open the demo in `<real_dir>/demo` (generating it when none is stored) as the open profile: the
+/// gates hold from before the database opens (the flag), the rates store starts empty so the demo's
+/// own stored rates are what it holds after the open. On failure the flag and the rates store are
+/// cleared again. The caller marks the session authenticated afterwards.
+pub fn open_session(
+    db: &Database,
+    real_dir: &Path,
+    language: &str,
+    now: i64,
+    authenticated: bool,
+) -> Result<UserProfile> {
+    open_session_with(db, real_dir, language, now, authenticated, seed_all)
+}
+
+fn open_session_with(
+    db: &Database,
+    real_dir: &Path,
+    language: &str,
+    now: i64,
+    authenticated: bool,
+    seed: impl FnOnce(&Connection, &DemoOptions) -> Result<()>,
+) -> Result<UserProfile> {
+    may_open(real_dir, authenticated)?;
+    fx::clear_current();
+    profile_dir::set_demo_open(true);
+    open_with(db, &profile_dir::demo_dir_in(real_dir), language, now, seed).inspect_err(|_| {
+        profile_dir::set_demo_open(false);
+        fx::clear_current();
+    })
+}
+
+/// What ends with the demo session besides its database (`commands::auth::end_session` calls it
+/// after closing): the flag, the demo's exchange rates (the generator stamps its built-in rates as
+/// fetched now, so a profile created next would take them for fresh), the categorization engine's
+/// layers loaded from the demo, and history work queued in it. Nothing happens, and `false` is
+/// returned, while the demo is not the open profile.
+pub fn clear_session_state(engine: &CategorizationEngine, recalc: &HistoryRecalc) -> bool {
+    if !profile_dir::demo_open() {
+        return false;
+    }
+    profile_dir::set_demo_open(false);
+    fx::clear_current();
+    engine.reset();
+    let dropped = recalc.discard_pending();
+    if dropped > 0 {
+        log::info!("[DEMO] {dropped} queued history job(s) of the demo were dropped");
+    }
+    true
 }
 
 /// Generate the demo into `demo_dir` (an incomplete folder there is deleted first) and leave it
@@ -87,9 +154,12 @@ pub fn status(real_dir: &Path, demo_dir: &Path) -> DemoStatus {
 ///
 /// The caller makes sure no real profile session is open in `db`: creating replaces it.
 pub fn create(db: &Database, demo_dir: &Path, language: &str, now: i64) -> Result<UserProfile> {
-    create_with(db, demo_dir, language, now, |conn, opts| {
-        demo::seed(conn, opts).map(|_| ())
-    })
+    create_with(db, demo_dir, language, now, seed_all)
+}
+
+/// The whole data set (`demo::seed`).
+fn seed_all(conn: &Connection, opts: &DemoOptions) -> Result<()> {
+    demo::seed(conn, opts).map(|_| ())
 }
 
 /// [`create`] with the generator passed in, so a test can make it fail.
@@ -129,6 +199,8 @@ fn create_with(
     built.inspect_err(|e| {
         log::warn!("[DEMO] Generating the demo profile failed, its folder goes: {e}");
         db.close();
+        // The generator may have loaded its built-in rates already
+        fx::clear_current();
         if let Err(removal) = remove_folder(demo_dir) {
             log::warn!("[DEMO] The incomplete demo folder could not be removed: {removal}");
         }
@@ -139,10 +211,21 @@ fn create_with(
 /// to `language` when it differs (the data keeps the names it was generated with). A folder
 /// without the marker, or one whose database does not open, is generated again.
 pub fn open(db: &Database, demo_dir: &Path, language: &str, now: i64) -> Result<UserProfile> {
+    open_with(db, demo_dir, language, now, seed_all)
+}
+
+/// [`open`] with the generator passed in, so a test can make a generation fail.
+fn open_with(
+    db: &Database,
+    demo_dir: &Path,
+    language: &str,
+    now: i64,
+    seed: impl FnOnce(&Connection, &DemoOptions) -> Result<()>,
+) -> Result<UserProfile> {
     check_demo_folder(demo_dir)?;
     let Some(mut state) = read_state(demo_dir) else {
         log::info!("[DEMO] No complete demo profile is stored: generating it");
-        return create(db, demo_dir, language, now);
+        return create_with(db, demo_dir, language, now, seed);
     };
     let language = language_code(language);
     let opened = (|| {
@@ -161,7 +244,7 @@ pub fn open(db: &Database, demo_dir: &Path, language: &str, now: i64) -> Result<
         Err(e) => {
             log::warn!("[DEMO] The stored demo profile did not open, generating it again: {e}");
             db.close();
-            create(db, demo_dir, language, now)
+            create_with(db, demo_dir, language, now, seed)
         }
     }
 }
@@ -613,5 +696,112 @@ mod tests {
             !discard_beside_real_profile(&real, &demo_dir).expect("again"),
             "nothing left to delete"
         );
+    }
+
+    fn stored_rates_fetched_at(db: &Database) -> i64 {
+        count(db, "SELECT MAX(fetched_at) FROM exchange_rates")
+    }
+
+    #[test]
+    fn the_demo_may_open_only_without_a_real_profile() {
+        let (_root, real, _demo) = folders();
+        may_open(&real, false).expect("a fresh install");
+        let unavailable = |result: Result<()>| match result {
+            Err(AppError::Auth(key)) => assert_eq!(key, DEMO_UNAVAILABLE),
+            other => panic!("expected the demo to be refused, got {other:?}"),
+        };
+        unavailable(may_open(&real, true));
+        fake_real_profile(&real);
+        unavailable(may_open(&real, false));
+    }
+
+    #[test]
+    fn a_refused_or_failed_open_leaves_the_demo_closed() {
+        let (_root, real, demo_dir) = folders();
+        let db = Database::new();
+        let failing = |_: &Connection, _: &DemoOptions| -> Result<()> {
+            Err(AppError::Internal("generator stopped".into()))
+        };
+
+        open_session_with(&db, &real, "en", now(), true, failing).expect_err("refused");
+        assert!(!profile_dir::demo_open());
+        assert!(!demo_dir.exists(), "a refused open creates nothing");
+
+        let mut quotes = fx::Quotes::new("EUR");
+        quotes.insert("USD", 1.1);
+        fx::set_current_with_revision(quotes, now());
+        open_session_with(&db, &real, "en", now(), false, failing).expect_err("generation fails");
+        assert!(!profile_dir::demo_open(), "the flag is cleared again");
+        assert_eq!(fx::current_fetched_at(), None, "no rates are left behind");
+        assert!(!db.is_open());
+        assert!(!demo_dir.exists());
+    }
+
+    #[test]
+    fn ending_the_demo_session_clears_its_rates_rules_and_queued_work() {
+        let _seed = demo::seed_test_lock();
+        let (_root, real, demo_dir) = folders();
+        let db = Database::new();
+        let engine = CategorizationEngine::new_empty();
+        let recalc = HistoryRecalc::new();
+        assert!(!clear_session_state(&engine, &recalc), "nothing open yet");
+
+        open_session(&db, &real, "en", now(), false).expect("open");
+        assert!(profile_dir::demo_open());
+        let demo_rates_at = stored_rates_fetched_at(&db);
+        assert_eq!(fx::current_fetched_at(), Some(demo_rates_at));
+        engine.learn_from_user(Some("demo payee"), Some("DE89370400440532013000"), "cat");
+        engine.set_own_ibans(vec!["DE89370400440532013000".into()]);
+        recalc.enqueue_for_test([crate::services::history_recalc::Job::Days(now() - DAY)]);
+        close(&db);
+
+        assert!(clear_session_state(&engine, &recalc));
+
+        assert!(!profile_dir::demo_open());
+        assert_eq!(
+            fx::current_fetched_at(),
+            None,
+            "the rates store reads never fetched"
+        );
+        assert!(fx::current().convert(1.0, "USD", "EUR").is_none());
+        assert_eq!(engine.stats().learned_payees, 0);
+        assert_eq!(
+            recalc.discard_pending(),
+            0,
+            "the queued job went with the demo"
+        );
+        assert!(
+            demo_dir.join(STATE_FILE).exists(),
+            "the demo itself stays stored"
+        );
+
+        // Opening the stored demo again loads that database's own rates.
+        open_session(&db, &real, "en", now() + DAY, false).expect("open again");
+        assert_eq!(fx::current_fetched_at(), Some(demo_rates_at));
+        assert!(fx::current().convert(1.0, "USD", "EUR").is_some());
+        close(&db);
+        assert!(clear_session_state(&engine, &recalc));
+
+        // A real profile unlocked next holds its own rates, never the demo's.
+        let real_db_path = real.join("real-profile").join(DB_FILE_NAME);
+        let key = crate::services::crypto::master_key_to_hex(&[7; 32]);
+        db.create_with_key(real_db_path.clone(), &key)
+            .expect("real profile");
+        assert_eq!(
+            fx::current_fetched_at(),
+            None,
+            "a new profile starts never fetched"
+        );
+        db.with_conn(|conn| {
+            conn.execute(
+                "INSERT INTO exchange_rates (currency, rate, fetched_at) VALUES ('USD', 1.2, 1000)",
+                [],
+            )?;
+            Ok(())
+        })
+        .expect("real rates");
+        close(&db);
+        db.open_with_key(real_db_path, &key).expect("unlock");
+        assert_eq!(fx::current_fetched_at(), Some(1000));
     }
 }

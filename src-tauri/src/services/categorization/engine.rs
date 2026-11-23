@@ -206,6 +206,24 @@ impl CategorizationEngine {
         self.forget_payee(Some(payee), None)
     }
 
+    /// Forget every learned payee (the exact-match layer); the loader fills it afresh from the
+    /// open profile's database, so nothing of another profile survives a reload.
+    pub fn clear_learned(&self) {
+        if let Ok(mut exact) = self.exact_match.write() {
+            *exact = ExactMatchEngine::new();
+        }
+    }
+
+    /// Back to an empty engine, as at app start: no own accounts, custom rules, learned payees or
+    /// pack rules. A session whose data must not reach the next profile ends with it (the demo
+    /// profile, ADR 0037); the next open loads its own layers.
+    pub fn reset(&self) {
+        self.set_own_ibans(Vec::new());
+        self.update_custom_rules(Vec::new());
+        self.clear_learned();
+        self.update_rules(Vec::new());
+    }
+
     /// Update default rules (system rules)
     pub fn update_rules(&self, rules: Vec<CategorizationRule>) {
         if let Ok(mut engine) = self.default_rule_engine.write() {

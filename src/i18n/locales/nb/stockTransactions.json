@@ -85,6 +85,72 @@
     "outsideResult": "utenfor resultatet av salg",
     "noPayouts": "Ingen utbetaling"
   },
+  "activity": {
+    "title": "Kjøp og salg over tid",
+    "subMonth": "Volum i {{currency}} per måned. En søyle avgrenser tabellen under rapporten.",
+    "subYear": "Volum i {{currency}} per år. En søyle avgrenser tabellen under rapporten.",
+    "buys": "Kjøp",
+    "sells": "Salg",
+    "result": "Resultat av salg"
+  },
+  "tickerResults": {
+    "title": "Resultat per aksje",
+    "sub": "Solgte aksjer fra største gevinst til største tap.",
+    "emptyTitle": "Ingen salg",
+    "emptyBody": "Du solgte ingen aksjer i denne perioden.",
+    "allTaxable": "helt skattepliktig",
+    "allExempt": "helt fritatt",
+    "taxablePart": "skattepliktig {{amount}}",
+    "showAll_one": "Vis alle {{count}} aksjer",
+    "showAll_other": "Vis alle {{count}} aksjer",
+    "showFewer": "Vis bare de første {{n}}"
+  },
+  "quantity_one": "{{value}} aksje",
+  "quantity_other": "{{value}} aksjer",
+  "upcoming": {
+    "title": "Eiertidstesten nærmer seg",
+    "sub": "De nærmeste kjøpene som når {{length}} eietid. Et salg fra datoen som vises, består eiertidstesten.",
+    "none": "Ingen kjøp venter lenger på eiertidstesten.",
+    "showAll": "Vis alle {{n}}",
+    "showDetail": "Vis detaljer",
+    "footMore_one": "{{count}} kjøp til venter til senere.",
+    "footMore_other": "{{count}} kjøp til venter til senere.",
+    "footShare": "Av åpne posisjoner til en verdi av {{total}} har {{percent}} ({{passed}}) allerede bestått testen.",
+    "boughtOn": "Kjøpt {{date}}",
+    "gain": "urealisert gevinst",
+    "loss": "urealisert tap",
+    "relative": {
+      "today": "i dag",
+      "tomorrow": "i morgen",
+      "inDays_one": "om {{count}} dag",
+      "inDays_other": "om {{count}} dager",
+      "inMonths_one": "om {{count}} måned",
+      "inMonths_other": "om {{count}} måneder",
+      "daysAgo_one": "for {{count}} dag siden",
+      "daysAgo_other": "for {{count}} dager siden",
+      "monthsAgo_one": "for {{count}} måned siden",
+      "monthsAgo_other": "for {{count}} måneder siden"
+    },
+    "dialog": {
+      "title": "Eiertidstest for åpne posisjoner",
+      "sub": "Hvert kjøp du fortsatt eier, og dagen fra salget består eiertidstesten ({{length}}).",
+      "tabWaiting": "Venter på testen · {{n}}",
+      "tabPassed": "Allerede bestått · {{n}}",
+      "colPasses": "Består",
+      "colPassed": "Bestått",
+      "colTitle": "Aksje",
+      "colBought": "Kjøpt",
+      "colValue": "Verdi i dag",
+      "colUnrealized": "Urealisert",
+      "emptyWaitingTitle": "Ingenting venter",
+      "emptyWaitingBody": "Alle kjøp du eier har allerede bestått eiertidstesten.",
+      "emptyPassedTitle": "Ingenting bestått ennå",
+      "emptyPassedBody": "Ingen kjøp du eier har bestått eiertidstesten ennå.",
+      "ofLot_one": "{{open}} av {{lot}} aksje",
+      "ofLot_other": "{{open}} av {{lot}} aksjer",
+      "perShare": "til {{price}} per aksje"
+    }
+  },
   "tips": {
     "costMethod": {
       "label": "Slik fastsettes anskaffelseskosten",

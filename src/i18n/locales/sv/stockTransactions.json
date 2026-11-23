@@ -85,6 +85,72 @@
     "outsideResult": "utanför resultatet av försäljningar",
     "noPayouts": "Ingen utbetalning"
   },
+  "activity": {
+    "title": "Köp och försäljningar över tid",
+    "subMonth": "Volym i {{currency}} per månad. En stapel avgränsar tabellen under rapporten.",
+    "subYear": "Volym i {{currency}} per år. En stapel avgränsar tabellen under rapporten.",
+    "buys": "Köp",
+    "sells": "Försäljningar",
+    "result": "Resultat av försäljningar"
+  },
+  "tickerResults": {
+    "title": "Resultat per värdepapper",
+    "sub": "Sålda värdepapper från största vinst till största förlust.",
+    "emptyTitle": "Ingen försäljning",
+    "emptyBody": "Du sålde inget värdepapper under den här perioden.",
+    "allTaxable": "helt skattepliktigt",
+    "allExempt": "helt undantaget",
+    "taxablePart": "skattepliktigt {{amount}}",
+    "showAll_one": "Visa alla {{count}} värdepapper",
+    "showAll_other": "Visa alla {{count}} värdepapper",
+    "showFewer": "Visa bara de första {{n}}"
+  },
+  "quantity_one": "{{value}} aktie",
+  "quantity_other": "{{value}} aktier",
+  "upcoming": {
+    "title": "Innehavstidstestet närmar sig",
+    "sub": "De närmaste köpen som når {{length}} innehav. En försäljning från angivet datum klarar innehavstidstestet.",
+    "none": "Inget köp väntar längre på innehavstidstestet.",
+    "showAll": "Visa alla {{n}}",
+    "showDetail": "Visa detaljer",
+    "footMore_one": "{{count}} köp till väntar till senare.",
+    "footMore_other": "{{count}} köp till väntar till senare.",
+    "footShare": "Av de öppna positionerna värda {{total}} har {{percent}} ({{passed}}) redan klarat testet.",
+    "boughtOn": "Köpt {{date}}",
+    "gain": "orealiserad vinst",
+    "loss": "orealiserad förlust",
+    "relative": {
+      "today": "i dag",
+      "tomorrow": "i morgon",
+      "inDays_one": "om {{count}} dag",
+      "inDays_other": "om {{count}} dagar",
+      "inMonths_one": "om {{count}} månad",
+      "inMonths_other": "om {{count}} månader",
+      "daysAgo_one": "för {{count}} dag sedan",
+      "daysAgo_other": "för {{count}} dagar sedan",
+      "monthsAgo_one": "för {{count}} månad sedan",
+      "monthsAgo_other": "för {{count}} månader sedan"
+    },
+    "dialog": {
+      "title": "Innehavstidstest för öppna positioner",
+      "sub": "Varje köp du fortfarande äger och dagen från vilken försäljningen klarar innehavstidstestet ({{length}}).",
+      "tabWaiting": "Väntar på testet · {{n}}",
+      "tabPassed": "Redan klarat · {{n}}",
+      "colPasses": "Klaras",
+      "colPassed": "Klarades",
+      "colTitle": "Värdepapper",
+      "colBought": "Köpt",
+      "colValue": "Värde i dag",
+      "colUnrealized": "Orealiserat",
+      "emptyWaitingTitle": "Inget väntar",
+      "emptyWaitingBody": "Alla köp du äger har redan klarat innehavstidstestet.",
+      "emptyPassedTitle": "Inget klarat ännu",
+      "emptyPassedBody": "Inget köp du äger har klarat innehavstidstestet ännu.",
+      "ofLot_one": "{{open}} av {{lot}} aktie",
+      "ofLot_other": "{{open}} av {{lot}} aktier",
+      "perShare": "till {{price}} per aktie"
+    }
+  },
   "tips": {
     "costMethod": {
       "label": "Hur anskaffningsvärdet bestäms",

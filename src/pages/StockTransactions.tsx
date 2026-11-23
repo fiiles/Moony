@@ -16,6 +16,9 @@ import { ConversionQualityNote, ReportError } from '@/components/reports/ReportQ
 import { PeriodControls, type PeriodMode } from '@/components/stock-transactions/PeriodControls';
 import { ResultHero, ResultHeroSkeleton } from '@/components/stock-transactions/ResultHero';
 import { ReportStats, ReportStatsSkeleton } from '@/components/stock-transactions/ReportStats';
+import { ActivityCard } from '@/components/stock-transactions/ActivityCard';
+import { TickerResultsCard } from '@/components/stock-transactions/TickerResultsCard';
+import { HoldingTestCard } from '@/components/stock-transactions/HoldingTestCard';
 
 const yearOf = (day: number) => new Date(day * 1000).getUTCFullYear();
 
@@ -39,8 +42,8 @@ export default function StockTransactions() {
   // The custom range ("Vlastní období"); the year mode reads its period from `year`
   const [fromDay, setFromDay] = useState(() => yearPeriod(currentYear).fromDay);
   const [toDay, setToDay] = useState(today);
-  // The chart bucket that narrows the table card (Tasks 7 and 8 read it); a new period clears it
-  const [_bucket, setBucket] = useState<StockReportBucket | null>(null);
+  // The chart bucket that narrows the table card; a new period clears it
+  const [bucket, setBucket] = useState<StockReportBucket | null>(null);
 
   const period = mode === 'year' ? yearPeriod(year) : { fromDay, toDay };
   const request = useMemo<StockTransactionsReportRequest | null>(
@@ -161,8 +164,28 @@ export default function StockTransactions() {
         stale={isPlaceholderData}
       />
       <ReportStats stats={report.stats} currency={report.currency} stale={isPlaceholderData} />
-      {/* Task 7: activity + ticker results row */}
-      {/* Task 7: holding-test card */}
+      <div className="mb-[17px] grid grid-cols-2 items-stretch gap-[18px]">
+        <ActivityCard
+          buckets={report.buckets}
+          currency={report.currency}
+          bucket={bucket}
+          onBucketChange={setBucket}
+          stale={isPlaceholderData}
+        />
+        <TickerResultsCard
+          tickers={report.tickers}
+          currency={report.currency}
+          testOn={settings.holdingTestEnabled}
+          stale={isPlaceholderData}
+        />
+      </div>
+      {settings.holdingTestEnabled && (
+        <HoldingTestCard
+          report={report}
+          months={settings.holdingTestMonths}
+          stale={isPlaceholderData}
+        />
+      )}
       {/* Task 8: transactions card */}
     </>
   );

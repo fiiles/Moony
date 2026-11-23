@@ -78,6 +78,64 @@
     "outsideResult": "売却損益の対象外",
     "noPayouts": "支払なし"
   },
+  "activity": {
+    "title": "時系列の購入と売却",
+    "subMonth": "月ごとの金額({{currency}})。棒を選ぶとレポート下の表が絞り込まれます。",
+    "subYear": "年ごとの金額({{currency}})。棒を選ぶとレポート下の表が絞り込まれます。",
+    "buys": "購入",
+    "sells": "売却",
+    "result": "売却の結果"
+  },
+  "tickerResults": {
+    "title": "銘柄別の結果",
+    "sub": "売却した銘柄を、利益の大きい順から損失の大きい順に表示します。",
+    "emptyTitle": "売却なし",
+    "emptyBody": "この期間に売却した銘柄はありません。",
+    "allTaxable": "すべて課税対象",
+    "allExempt": "すべて非課税",
+    "taxablePart": "課税対象 {{amount}}",
+    "showAll_other": "全 {{count}} 銘柄を表示",
+    "showFewer": "最初の {{n}} 件のみ表示"
+  },
+  "quantity_other": "{{value}} 株",
+  "upcoming": {
+    "title": "保有期間テストが近づいています",
+    "sub": "{{length}}の保有期間に達する直近の購入です。表示された日以降の売却は保有期間テストを通過します。",
+    "none": "保有期間テストを待っている購入はもうありません。",
+    "showAll": "全 {{n}} 件を表示",
+    "showDetail": "詳細を表示",
+    "footMore_other": "さらに {{count}} 件の購入が後で待っています。",
+    "footShare": "評価額 {{total}} の保有ポジションのうち、{{percent}}({{passed}})はすでにテストを通過しています。",
+    "boughtOn": "購入日 {{date}}",
+    "gain": "含み益",
+    "loss": "含み損",
+    "relative": {
+      "today": "今日",
+      "tomorrow": "明日",
+      "inDays_other": "{{count}} 日後",
+      "inMonths_other": "{{count}} か月後",
+      "daysAgo_other": "{{count}} 日前",
+      "monthsAgo_other": "{{count}} か月前"
+    },
+    "dialog": {
+      "title": "保有ポジションの保有期間テスト",
+      "sub": "保有中の各購入と、その売却が保有期間テストを通過する日です({{length}})。",
+      "tabWaiting": "テスト待ち · {{n}}",
+      "tabPassed": "通過済み · {{n}}",
+      "colPasses": "通過日",
+      "colPassed": "通過日",
+      "colTitle": "銘柄",
+      "colBought": "購入",
+      "colValue": "現在の評価額",
+      "colUnrealized": "含み損益",
+      "emptyWaitingTitle": "待っているものはありません",
+      "emptyWaitingBody": "保有中のすべての購入が保有期間テストを通過しています。",
+      "emptyPassedTitle": "まだ通過したものはありません",
+      "emptyPassedBody": "保有中の購入で、まだ保有期間テストを通過したものはありません。",
+      "ofLot_other": "{{lot}} 株中 {{open}} 株",
+      "perShare": "1 株あたり {{price}}"
+    }
+  },
   "tips": {
     "costMethod": {
       "label": "取得費の決め方",

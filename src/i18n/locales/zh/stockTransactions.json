@@ -78,6 +78,64 @@
     "outsideResult": "不计入卖出盈亏",
     "noPayouts": "无派息"
   },
+  "activity": {
+    "title": "买入与卖出随时间变化",
+    "subMonth": "按月统计的金额({{currency}})。点击柱形可筛选报告下方的表格。",
+    "subYear": "按年统计的金额({{currency}})。点击柱形可筛选报告下方的表格。",
+    "buys": "买入",
+    "sells": "卖出",
+    "result": "卖出结果"
+  },
+  "tickerResults": {
+    "title": "按证券的结果",
+    "sub": "已卖出的证券,从盈利最多到亏损最多排列。",
+    "emptyTitle": "没有卖出",
+    "emptyBody": "此期间您没有卖出任何证券。",
+    "allTaxable": "全部应税",
+    "allExempt": "全部免税",
+    "taxablePart": "应税 {{amount}}",
+    "showAll_other": "显示全部 {{count}} 只证券",
+    "showFewer": "只显示前 {{n}} 只"
+  },
+  "quantity_other": "{{value}} 股",
+  "upcoming": {
+    "title": "持有期测试即将到期",
+    "sub": "最近将满 {{length}} 持有期的买入。自所示日期起卖出,将通过持有期测试。",
+    "none": "已没有买入在等待持有期测试。",
+    "showAll": "显示全部 {{n}} 笔",
+    "showDetail": "查看详情",
+    "footMore_other": "另有 {{count}} 笔买入稍后到期。",
+    "footShare": "在价值 {{total}} 的未平仓持仓中,已有 {{percent}}({{passed}})通过测试。",
+    "boughtOn": "买入日 {{date}}",
+    "gain": "未实现收益",
+    "loss": "未实现亏损",
+    "relative": {
+      "today": "今天",
+      "tomorrow": "明天",
+      "inDays_other": "{{count}} 天后",
+      "inMonths_other": "{{count}} 个月后",
+      "daysAgo_other": "{{count}} 天前",
+      "monthsAgo_other": "{{count}} 个月前"
+    },
+    "dialog": {
+      "title": "未平仓持仓的持有期测试",
+      "sub": "您仍持有的每笔买入,以及其卖出通过持有期测试的日期({{length}})。",
+      "tabWaiting": "等待测试 · {{n}}",
+      "tabPassed": "已通过 · {{n}}",
+      "colPasses": "通过日",
+      "colPassed": "通过日",
+      "colTitle": "证券",
+      "colBought": "买入",
+      "colValue": "当前价值",
+      "colUnrealized": "未实现",
+      "emptyWaitingTitle": "没有等待中的",
+      "emptyWaitingBody": "您持有的所有买入都已通过持有期测试。",
+      "emptyPassedTitle": "尚无通过的",
+      "emptyPassedBody": "您持有的买入还没有通过持有期测试。",
+      "ofLot_other": "共 {{lot}} 股中的 {{open}} 股",
+      "perShare": "每股 {{price}}"
+    }
+  },
   "tips": {
     "costMethod": {
       "label": "取得成本如何确定",

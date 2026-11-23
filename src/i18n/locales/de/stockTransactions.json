@@ -85,6 +85,72 @@
     "outsideResult": "außerhalb des Verkaufsergebnisses",
     "noPayouts": "Keine Auszahlung"
   },
+  "activity": {
+    "title": "Käufe und Verkäufe im Zeitverlauf",
+    "subMonth": "Volumen in {{currency}} je Monat. Ein Balken grenzt die Tabelle unter dem Bericht ein.",
+    "subYear": "Volumen in {{currency}} je Jahr. Ein Balken grenzt die Tabelle unter dem Bericht ein.",
+    "buys": "Käufe",
+    "sells": "Verkäufe",
+    "result": "Ergebnis der Verkäufe"
+  },
+  "tickerResults": {
+    "title": "Ergebnis je Titel",
+    "sub": "Verkaufte Titel vom größten Gewinn bis zum größten Verlust.",
+    "emptyTitle": "Kein Verkauf",
+    "emptyBody": "In diesem Zeitraum haben Sie keinen Titel verkauft.",
+    "allTaxable": "ganz steuerpflichtig",
+    "allExempt": "ganz befreit",
+    "taxablePart": "steuerpflichtig {{amount}}",
+    "showAll_one": "Alle {{count}} Titel anzeigen",
+    "showAll_other": "Alle {{count}} Titel anzeigen",
+    "showFewer": "Nur die ersten {{n}} anzeigen"
+  },
+  "quantity_one": "{{value}} Stück",
+  "quantity_other": "{{value}} Stück",
+  "upcoming": {
+    "title": "Haltefrist bald erreicht",
+    "sub": "Die nächsten Käufe, die {{length}} Haltedauer erreichen. Ein Verkauf ab dem genannten Tag besteht die Haltefrist.",
+    "none": "Kein Kauf wartet mehr auf die Haltefrist.",
+    "showAll": "Alle {{n}} anzeigen",
+    "showDetail": "Details anzeigen",
+    "footMore_one": "{{count}} weiterer Kauf folgt später.",
+    "footMore_other": "{{count}} weitere Käufe folgen später.",
+    "footShare": "Von den offenen Positionen im Wert von {{total}} haben {{percent}} ({{passed}}) die Haltefrist bereits erreicht.",
+    "boughtOn": "Gekauft am {{date}}",
+    "gain": "nicht realisierter Gewinn",
+    "loss": "nicht realisierter Verlust",
+    "relative": {
+      "today": "heute",
+      "tomorrow": "morgen",
+      "inDays_one": "in {{count}} Tag",
+      "inDays_other": "in {{count}} Tagen",
+      "inMonths_one": "in {{count}} Monat",
+      "inMonths_other": "in {{count}} Monaten",
+      "daysAgo_one": "vor {{count}} Tag",
+      "daysAgo_other": "vor {{count}} Tagen",
+      "monthsAgo_one": "vor {{count}} Monat",
+      "monthsAgo_other": "vor {{count}} Monaten"
+    },
+    "dialog": {
+      "title": "Haltefrist der offenen Positionen",
+      "sub": "Jeder Kauf, den Sie noch halten, und der Tag, ab dem sein Verkauf die Haltefrist besteht ({{length}}).",
+      "tabWaiting": "Wartet auf die Frist · {{n}}",
+      "tabPassed": "Bereits erreicht · {{n}}",
+      "colPasses": "Erreicht am",
+      "colPassed": "Erreicht seit",
+      "colTitle": "Titel",
+      "colBought": "Gekauft",
+      "colValue": "Wert heute",
+      "colUnrealized": "Nicht realisiert",
+      "emptyWaitingTitle": "Nichts wartet",
+      "emptyWaitingBody": "Alle gehaltenen Käufe haben die Haltefrist bereits erreicht.",
+      "emptyPassedTitle": "Noch nichts erreicht",
+      "emptyPassedBody": "Noch kein gehaltener Kauf hat die Haltefrist erreicht.",
+      "ofLot_one": "{{open}} von {{lot}} Stück",
+      "ofLot_other": "{{open}} von {{lot}} Stück",
+      "perShare": "zu {{price}} je Stück"
+    }
+  },
   "tips": {
     "costMethod": {
       "label": "Wie die Anschaffungskosten bestimmt werden",

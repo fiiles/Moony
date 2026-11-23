@@ -85,6 +85,72 @@
     "outsideResult": "outside the result of sales",
     "noPayouts": "No payouts"
   },
+  "activity": {
+    "title": "Buys and sells over time",
+    "subMonth": "Volume in {{currency}} by month. A bar narrows the table below the report.",
+    "subYear": "Volume in {{currency}} by year. A bar narrows the table below the report.",
+    "buys": "Buys",
+    "sells": "Sells",
+    "result": "Result of sales"
+  },
+  "tickerResults": {
+    "title": "Result by ticker",
+    "sub": "Sold tickers from the largest gain to the largest loss.",
+    "emptyTitle": "No sales",
+    "emptyBody": "You sold no ticker in this period.",
+    "allTaxable": "all taxable",
+    "allExempt": "all exempt",
+    "taxablePart": "taxable {{amount}}",
+    "showAll_one": "Show all {{count}} tickers",
+    "showAll_other": "Show all {{count}} tickers",
+    "showFewer": "Show only the first {{n}}"
+  },
+  "quantity_one": "{{value}} share",
+  "quantity_other": "{{value}} shares",
+  "upcoming": {
+    "title": "Holding test coming up",
+    "sub": "The nearest buys to reach {{length}} of holding. A sale from the date shown passes the holding-period test.",
+    "none": "No buy is waiting for the holding test any more.",
+    "showAll": "Show all {{n}}",
+    "showDetail": "Show detail",
+    "footMore_one": "{{count}} more buy waits for later.",
+    "footMore_other": "{{count}} more buys wait for later.",
+    "footShare": "Of the open positions worth {{total}}, {{percent}} ({{passed}}) has already passed the test.",
+    "boughtOn": "Bought {{date}}",
+    "gain": "unrealized gain",
+    "loss": "unrealized loss",
+    "relative": {
+      "today": "today",
+      "tomorrow": "tomorrow",
+      "inDays_one": "in {{count}} day",
+      "inDays_other": "in {{count}} days",
+      "inMonths_one": "in {{count}} month",
+      "inMonths_other": "in {{count}} months",
+      "daysAgo_one": "{{count}} day ago",
+      "daysAgo_other": "{{count}} days ago",
+      "monthsAgo_one": "{{count}} month ago",
+      "monthsAgo_other": "{{count}} months ago"
+    },
+    "dialog": {
+      "title": "Holding test of open positions",
+      "sub": "Every buy you still hold and the day from which its sale passes the holding-period test ({{length}}).",
+      "tabWaiting": "Waiting for the test · {{n}}",
+      "tabPassed": "Already passed · {{n}}",
+      "colPasses": "Passes",
+      "colPassed": "Passed",
+      "colTitle": "Ticker",
+      "colBought": "Bought",
+      "colValue": "Value today",
+      "colUnrealized": "Unrealized",
+      "emptyWaitingTitle": "Nothing is waiting",
+      "emptyWaitingBody": "Every buy you hold has already passed the holding test.",
+      "emptyPassedTitle": "Nothing has passed yet",
+      "emptyPassedBody": "No buy you hold has passed the holding test yet.",
+      "ofLot_one": "{{open}} of {{lot}} share",
+      "ofLot_other": "{{open}} of {{lot}} shares",
+      "perShare": "{{price}} per share"
+    }
+  },
   "tips": {
     "costMethod": {
       "label": "How the acquisition cost is set",

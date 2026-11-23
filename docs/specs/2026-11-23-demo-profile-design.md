@@ -99,11 +99,12 @@ drives an older car, invests monthly. Four years of bank history, five years of 
 loan history.
 
 **Accounts (3).** Current account (EUR, salary and all spending). Savings account (EUR, 2.6 %,
-rate valid for about five more months, so a deadline shows). Travel account at Wise (USD, used
+rate valid for about two more months, so a deadline shows; it funds the car, the parking space,
+the gold, the bond and every single-stock and crypto purchase). Travel account at Wise (USD, used
 on two trips). Month-end balance records for all four years, consistent with the payments.
 
 **Payments (about 45 a month, roughly 2 200 in total), all categorized.**
-- Income: salary on the 25th rising yearly (3 350 → 3 550 → 3 850 → 4 100), a bonus every
+- Income: salary on the 1st rising yearly (3 350 → 3 550 → 3 850 → 4 100), a bonus every
   March, a tax refund every May, 95 a month rent from the parking space, savings interest.
 - Fixed: mortgage 791, kitchen loan 213 (from M20), building fee 185, electricity and heating
   with a winter peak, internet, phone, streaming, gym, transit pass, life insurance monthly,
@@ -116,8 +117,8 @@ on two trips). Month-end balance records for all four years, consistent with the
 **Budgets.** Monthly limits for groceries, dining, shopping, entertainment and transport, with
 one raise a year ago so past months keep their old limit.
 
-**Spending plans.** This year: Holiday 2 800, Christmas and gifts 600, Car 1 200. Last year:
-Holiday 2 500 (closed). Payments are tagged to them.
+**Spending plans.** This year: Holiday, Christmas and gifts (600), Car. Last year: Holiday
+(closed). Amounts are sized from the tagged payments so the plans end up mostly used, not over. Payments are tagged to them.
 
 **Cashflow planning.** Salary, groceries and subscriptions as manual items; loans, insurance,
 property costs, rent, interest and dividends come from their sources automatically.
@@ -142,7 +143,8 @@ with the extra repayment. Kitchen loan 9 000 from M20 at 6.4 % for four years.
 **Insurance.** Home (linked to the flat), life, car (anniversary within weeks, so a deadline
 shows), liability, travel. One policy document attached.
 
-**Other assets.** Volkswagen Golf (bought M40, yearly valuations going down), two one-ounce
+**Other assets.** Volkswagen Golf (bought about three years ago, on the day its insurance
+anniversary falls, yearly valuations going down), two one-ounce
 gold coins (bought M25, valuations going up).
 
 **History.** Net worth for every day of the five years, derived by the app's own rules from

@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import type { StockReportAmounts, StockReportSummary } from '@shared/schema';
 import { useReportMoney } from '@/lib/use-report-money';
 import { cn } from '@/lib/utils';
+import { holdingLength } from './holding-length';
 
 const COLUMNS = ['proceeds', 'cost', 'result', 'fees', 'resultAfterFees'] as const;
 
@@ -35,12 +36,7 @@ export function SummaryTable({
   const { t } = useTranslation('stockTransactions');
   const { money, signedMoney } = useReportMoney(currency);
 
-  const length =
-    months === null
-      ? ''
-      : months % 12 === 0
-        ? t('length.years', { count: months / 12 })
-        : t('length.months', { count: months });
+  const length = months === null ? '' : holdingLength(t, months);
 
   const rows: Row[] =
     months !== null && summary.taxable && summary.exempt

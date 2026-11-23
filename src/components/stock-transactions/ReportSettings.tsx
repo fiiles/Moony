@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { ExplainEm, ExplainText, ExplainTip, ExplainTitle } from './ExplainTip';
+import { holdingLength } from './holding-length';
 
 /** The preset lengths of the holding test, in months (spec D7). */
 const PRESETS = [6, 12, 24, 36, 60, 120] as const;
@@ -31,7 +32,11 @@ export function ReportSettings({
   onChange: (next: StockTransactionsReportSettings) => void;
 }) {
   const { t } = useTranslation('stockTransactions');
-  /** "Vlastní…" picked while the stored length may still be a preset. */
+  /**
+   * The months field is on screen because of the person (picked "Vlastní…" or typed into it): it
+   * stays while they type, even through a value that equals a preset, until a preset is picked
+   * or the test is switched off.
+   */
   const [customPicked, setCustomPicked] = useState(false);
   /** What the months field holds; `null` shows the stored length. */
   const [draft, setDraft] = useState<string | null>(null);
@@ -41,10 +46,6 @@ export function ReportSettings({
   const custom = customPicked || !isPreset;
   const text = draft ?? String(months);
   const invalid = parseHoldingMonths(text) === null;
-  const lengthLabel = (value: number) =>
-    value % 12 === 0
-      ? t('length.years', { count: value / 12 })
-      : t('length.months', { count: value });
 
   const pickLength = (value: string) => {
     setDraft(null);
@@ -57,6 +58,7 @@ export function ReportSettings({
     if (next !== months) onChange({ ...settings, holdingTestMonths: next });
   };
   const typeMonths = (value: string) => {
+    setCustomPicked(true);
     setDraft(value);
     const next = parseHoldingMonths(value);
     if (next !== null && next !== months) onChange({ ...settings, holdingTestMonths: next });
@@ -99,7 +101,11 @@ export function ReportSettings({
           id="stock-report-holding-test"
           className="ml-0.5"
           checked={settings.holdingTestEnabled}
-          onCheckedChange={(holdingTestEnabled) => onChange({ ...settings, holdingTestEnabled })}
+          onCheckedChange={(holdingTestEnabled) => {
+            setCustomPicked(false);
+            setDraft(null);
+            onChange({ ...settings, holdingTestEnabled });
+          }}
         />
         {settings.holdingTestEnabled && (
           <>
@@ -113,7 +119,7 @@ export function ReportSettings({
               <SelectContent>
                 {PRESETS.map((value) => (
                   <SelectItem key={value} value={String(value)}>
-                    {lengthLabel(value)}
+                    {holdingLength(t, value)}
                   </SelectItem>
                 ))}
                 <SelectItem value={CUSTOM}>{t('settings.custom')}</SelectItem>

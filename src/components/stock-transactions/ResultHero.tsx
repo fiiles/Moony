@@ -65,7 +65,7 @@ export function ResultHero({
         <div className="text-table font-600 text-ink-3">{t('summary.taxable')}</div>
         <b
           className={cn(
-            'my-1.5 block text-[22px] font-580 leading-none tracking-[-0.05em] num',
+            'my-1.5 block text-stat num',
             taxableResult > 0 && 'text-gain',
             taxableResult < 0 && 'text-loss',
             taxableResult === 0 && 'text-ink'

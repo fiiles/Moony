@@ -1898,6 +1898,34 @@ export const budgetingApi = {
 };
 
 // ============================================================================
+// Stock transactions report API
+// ============================================================================
+
+import type { StockTransactionsReport, StockTransactionsReportRequest } from '@shared/schema';
+
+export type {
+  StockReportCostMethod,
+  StockTransactionsReportRequest,
+  StockReportAmounts,
+  StockReportSummary,
+  StockReportStats,
+  StockReportBucket,
+  StockReportTickerResult,
+  StockReportMatch,
+  StockReportSale,
+  StockReportLedgerRow,
+  StockReportOpenLot,
+  StockTransactionsReport,
+  StockTransactionsReportSettings,
+} from '@shared/schema';
+
+export const stockTransactionsApi = {
+  /** Realized sales, trades, dividends and open lots of a period (spec 2026-11-23). */
+  getReport: (request: StockTransactionsReportRequest) =>
+    tauriInvoke<StockTransactionsReport>('get_stock_transactions_report', { request }),
+};
+
+// ============================================================================
 // Spending plans API
 // ============================================================================
 

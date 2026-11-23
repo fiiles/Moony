@@ -1,16 +1,17 @@
 //! Stock transactions report: realized sales valued by cost method and holding-period test,
 //! with the lots behind them (`lots`) and their valuation (`sales`).
 
+pub mod activity;
 pub mod lots;
+pub mod open_lots;
 pub mod sales;
 
 use rusqlite::Connection;
 
 use crate::error::Result;
 use crate::models::fx::ConversionQuality;
-use crate::models::{StockReportStats, StockTransactionsReport, StockTransactionsReportRequest};
+use crate::models::{StockTransactionsReport, StockTransactionsReportRequest};
 use crate::services::fx;
-use crate::services::reporting::money_in_currency;
 
 const DAY: i64 = 86_400;
 
@@ -24,38 +25,32 @@ pub fn report(
     let currency = fx::normalize(&request.report_currency)
         .unwrap_or_else(|| request.report_currency.trim().to_uppercase());
     let replay = lots::replay(lots::load_trades(conn)?);
+    let dividends = activity::dividends_in_period(conn, request, today)?;
     let first_day = replay.trades.first().map(|t| t.day);
     let last_day = replay.trades.last().map(|t| t.day);
-    let span_start = first_day.unwrap_or(today).min(today);
+    let span_start = first_day
+        .unwrap_or(today)
+        .min(today)
+        .min(dividends.first().map_or(today, |d| d.ex_date));
     let span_end = last_day.unwrap_or(today).max(today);
     let history = fx::History::load(conn, span_start, span_end)?;
     let current = fx::current();
     let mut conv = sales::Converter::new(&history, &current, &currency);
     let outcome = sales::value_sales(&replay, request, &currency, &mut conv);
-    let zero = money_in_currency(0.0, &currency);
+    let activity = activity::build(&replay, &outcome, &dividends, request, &currency, &mut conv);
+    let open_lots =
+        open_lots::open_lots(conn, &replay, &outcome, request, &current, today, &mut conv)?;
     Ok(StockTransactionsReport {
         fx_quality: ConversionQuality::from(&conv.quality),
         today: today.div_euclid(DAY) * DAY,
         first_transaction_day: first_day,
         summary: outcome.summary,
-        // Task 3 fills the stats, buckets, ledger and open lots.
-        stats: StockReportStats {
-            proceeds: zero.clone(),
-            sales_count: 0,
-            sold_tickers: 0,
-            bought: zero.clone(),
-            buys_count: 0,
-            bought_tickers: 0,
-            fees_paid: zero.clone(),
-            traded_volume: zero.clone(),
-            dividends: zero,
-            dividends_count: 0,
-        },
-        buckets: Vec::new(),
+        stats: activity.stats,
+        buckets: activity.buckets,
         tickers: outcome.tickers,
         sales: outcome.sales,
-        ledger: Vec::new(),
-        open_lots: Vec::new(),
+        ledger: activity.ledger,
+        open_lots,
         uncovered_tickers: outcome.uncovered_tickers,
         currency,
     })
@@ -98,6 +93,48 @@ mod tests {
                 currency TEXT NOT NULL,
                 rate REAL NOT NULL
             );
+            CREATE TABLE stock_data (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL UNIQUE,
+                original_price TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'USD',
+                price_date INTEGER NOT NULL,
+                fetched_at INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE TABLE stock_price_overrides (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL UNIQUE,
+                price TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'CZK',
+                updated_at INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE TABLE dividend_data (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL UNIQUE,
+                yearly_dividend_sum TEXT NOT NULL DEFAULT '0',
+                currency TEXT NOT NULL DEFAULT 'USD',
+                last_fetched_at INTEGER NOT NULL DEFAULT 0,
+                created_at INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE TABLE dividend_overrides (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL UNIQUE,
+                yearly_dividend_sum TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'CZK',
+                updated_at INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE TABLE stock_dividend_events (
+                ticker TEXT NOT NULL, ex_date INTEGER NOT NULL, amount TEXT NOT NULL,
+                currency TEXT NOT NULL, fetched_at INTEGER NOT NULL, PRIMARY KEY (ticker, ex_date)
+            );
+            CREATE TABLE stock_dividend_coverage (
+                ticker TEXT PRIMARY KEY, covered_from INTEGER NOT NULL, fetched_at INTEGER NOT NULL
+            );
+            CREATE TABLE investment_dividends (
+                id TEXT PRIMARY KEY, investment_id TEXT NOT NULL, ex_date INTEGER NOT NULL,
+                gross_amount TEXT NOT NULL, currency TEXT NOT NULL, note TEXT,
+                created_at INTEGER NOT NULL DEFAULT 0
+            );
             "#,
         )
         .expect("schema");
@@ -132,6 +169,15 @@ mod tests {
             rusqlite::params![id, investment, kind, quantity, price, currency, day, fee],
         )
         .expect("trade");
+    }
+
+    pub fn add_price(conn: &Connection, ticker: &str, price: &str, currency: &str) {
+        conn.execute(
+            "INSERT INTO stock_data (id, ticker, original_price, currency, price_date)
+             VALUES (?1, ?1, ?2, ?3, 0)",
+            rusqlite::params![ticker, price, currency],
+        )
+        .expect("price");
     }
 
     pub fn add_rate(conn: &Connection, day: i64, currency: &str, rate: f64) {

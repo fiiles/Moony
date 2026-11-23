@@ -94,6 +94,8 @@ pub struct SalesOutcome {
     pub summary: StockReportSummary,
     pub tickers: Vec<StockReportTickerResult>,
     pub uncovered_tickers: Vec<String>,
+    /// `(sale day, result after fees)` of every counted sale in the period, for the buckets.
+    pub results: Vec<(i64, f64)>,
 }
 
 /// The first day a sale is exempt: the day after `buy_day` plus `months` calendar months (a day
@@ -301,6 +303,7 @@ pub fn value_sales(
     let mut tickers: BTreeMap<String, TickerSums> = BTreeMap::new();
     let mut sales = Vec::new();
     let mut uncovered_tickers: Vec<String> = Vec::new();
+    let mut results: Vec<(i64, f64)> = Vec::new();
 
     for (index, sale) in replay.trades.iter().enumerate() {
         if sale.kind != TradeKind::Sell {
@@ -379,6 +382,7 @@ pub fn value_sales(
                 }
             }
             let result = sale_sums.after_fees();
+            results.push((sale.day, result));
             if result > RESULT_EPSILON {
                 in_profit += 1;
             } else if result < -RESULT_EPSILON {
@@ -443,6 +447,7 @@ pub fn value_sales(
         summary,
         tickers: ticker_rows.into_iter().map(|(_, row)| row).collect(),
         uncovered_tickers,
+        results,
     }
 }
 

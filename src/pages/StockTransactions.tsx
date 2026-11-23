@@ -19,6 +19,7 @@ import { ReportStats, ReportStatsSkeleton } from '@/components/stock-transaction
 import { ActivityCard } from '@/components/stock-transactions/ActivityCard';
 import { TickerResultsCard } from '@/components/stock-transactions/TickerResultsCard';
 import { HoldingTestCard } from '@/components/stock-transactions/HoldingTestCard';
+import { TransactionsCard } from '@/components/stock-transactions/TransactionsCard';
 
 const yearOf = (day: number) => new Date(day * 1000).getUTCFullYear();
 
@@ -186,7 +187,15 @@ export default function StockTransactions() {
           stale={isPlaceholderData}
         />
       )}
-      {/* Task 8: transactions card */}
+      <TransactionsCard
+        report={report}
+        testOn={settings.holdingTestEnabled}
+        costMethod={settings.costMethod}
+        period={period}
+        bucket={bucket}
+        onBucketChange={setBucket}
+        stale={isPlaceholderData}
+      />
     </>
   );
 }

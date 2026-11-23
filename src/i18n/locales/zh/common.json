@@ -282,6 +282,7 @@
     "oneTagPerGroup": "每个标签组中，一个持仓只能有一个标签。",
     "tagGroupConflict": "部分持仓在该标签组中已有其他标签。",
     "periodInvalid": "时期的开始日期必须早于结束日期。",
+    "holdingTestMonthsInvalid": "请输入 1 至 600 个月的持有期。",
     "tooManySeries": "一次请求的线条过多。",
     "seriesKeyInvalid": "图表线条请求无效。",
     "benchmarkTickerInvalid": "指数代码无效。",

@@ -282,6 +282,7 @@
     "oneTagPerGroup": "1つのポジションに付けられるタグは、各グループにつき1つだけです。",
     "tagGroupConflict": "一部のポジションには、そのグループの別のタグがすでに付いています。",
     "periodInvalid": "期間の開始日は終了日より前にしてください。",
+    "holdingTestMonthsInvalid": "保有期間は1〜600か月で入力してください。",
     "tooManySeries": "一度にリクエストされた線が多すぎます。",
     "seriesKeyInvalid": "グラフの線のリクエストが正しくありません。",
     "benchmarkTickerInvalid": "指数のティッカーが正しくありません。",

@@ -282,6 +282,7 @@
     "oneTagPerGroup": "Pozycja może mieć tylko jeden tag z każdej grupy.",
     "tagGroupConflict": "Niektóre pozycje mają już w tej grupie inny tag.",
     "periodInvalid": "Początek okresu musi być przed jego końcem.",
+    "holdingTestMonthsInvalid": "Wpisz okres posiadania od 1 do 600 miesięcy.",
     "tooManySeries": "Zażądano naraz zbyt wielu linii.",
     "seriesKeyInvalid": "Nieprawidłowe żądanie linii wykresu.",
     "benchmarkTickerInvalid": "Nieprawidłowy ticker indeksu.",

@@ -3285,6 +3285,181 @@ export type StockPriceOverride = { id: string; ticker: string; price: string; cu
 export type StockPricePoint = { timestamp: number; price: number; currency: string }
 
 /**
+ * Proceeds, cost and result of a set of sold shares in the report currency.
+ */
+export type StockReportAmounts = { proceeds: string; cost: string; 
+/**
+ * `proceeds - cost`.
+ */
+result: string; 
+/**
+ * Buy and sale fees of the sold pieces.
+ */
+fees: string; resultAfterFees: string }
+
+/**
+ * One time bucket of the activity chart.
+ */
+export type StockReportBucket = { 
+/**
+ * `YYYY-MM`, or `YYYY` when the period spans more than 24 months.
+ */
+key: string; fromDay: number; toDay: number; buys: string; sells: string; 
+/**
+ * Result after fees of the counted sales.
+ */
+result: string }
+
+/**
+ * How the cost of a sold share is determined.
+ */
+export type StockReportCostMethod = "fifo" | "average"
+
+/**
+ * What a ledger row records.
+ */
+export type StockReportLedgerKind = "buy" | "sell" | "dividend"
+
+/**
+ * One row of the chronological ledger.
+ */
+export type StockReportLedgerRow = { id: string; kind: StockReportLedgerKind; 
+/**
+ * Ex-date for a dividend.
+ */
+day: number; investmentId: string; ticker: string; companyName: string; 
+/**
+ * Dividend: shares held, `null` for a manual one.
+ */
+quantity: string | null; 
+/**
+ * Per share, trade currency; `null` for a manual dividend.
+ */
+price: string | null; currency: string; rate: string | null; 
+/**
+ * Report currency.
+ */
+amount: string | null; 
+/**
+ * Trade currency, `null` when none.
+ */
+fee: string | null }
+
+/**
+ * The part of a sale that comes from one buy lot.
+ */
+export type StockReportMatch = { buyDay: number; quantity: string; 
+/**
+ * Trade currency.
+ */
+buyPrice: string; buyCurrency: string; 
+/**
+ * Report currency per 1 unit of `buyCurrency` at `buyDay`.
+ */
+buyRate: string | null; 
+/**
+ * Per share, report currency; only with cost method `average`.
+ */
+averageCost: string | null; proceeds: string | null; cost: string | null; fees: string | null; resultAfterFees: string | null; 
+/**
+ * `null` when the test is off.
+ */
+exempt: boolean | null }
+
+/**
+ * A buy lot that is still (partly) open.
+ */
+export type StockReportOpenLot = { investmentId: string; ticker: string; companyName: string; buyDay: number; 
+/**
+ * Still open.
+ */
+quantity: string; 
+/**
+ * As bought.
+ */
+lotQuantity: string; buyPrice: string; buyCurrency: string; 
+/**
+ * First day a sale is exempt; `null` when the test is off.
+ */
+passDay: number | null; 
+/**
+ * Today.
+ */
+value: string | null; unrealized: string | null }
+
+/**
+ * One sale with the lots it consumed.
+ */
+export type StockReportSale = { 
+/**
+ * Transaction id.
+ */
+id: string; investmentId: string; ticker: string; companyName: string; day: number; 
+/**
+ * Whole sale.
+ */
+quantity: string; 
+/**
+ * Trade currency.
+ */
+price: string; currency: string; 
+/**
+ * At the sale day.
+ */
+rate: string | null; 
+/**
+ * `0` when every share has a lot.
+ */
+uncoveredQuantity: string; 
+/**
+ * `false` when an amount could not be converted.
+ */
+counted: boolean; matches: StockReportMatch[] }
+
+/**
+ * Activity figures of the period.
+ */
+export type StockReportStats = { 
+/**
+ * Every sale of the period, uncovered parts included.
+ */
+proceeds: string; salesCount: number; soldTickers: number; bought: string; buysCount: number; boughtTickers: number; 
+/**
+ * Fees of every trade in the period.
+ */
+feesPaid: string; 
+/**
+ * Bought + proceeds.
+ */
+tradedVolume: string; dividends: string; dividendsCount: number }
+
+/**
+ * Totals of the counted sales, split by the holding-period test when it is on.
+ */
+export type StockReportSummary = { total: StockReportAmounts; 
+/**
+ * `null` when the test is off.
+ */
+taxable: StockReportAmounts | null; exempt: StockReportAmounts | null; 
+/**
+ * Counted sales.
+ */
+salesCount: number; salesInProfit: number; salesInLoss: number }
+
+/**
+ * Result of one position over the period.
+ */
+export type StockReportTickerResult = { investmentId: string; ticker: string; companyName: string; 
+/**
+ * Sold and counted.
+ */
+quantity: string; resultAfterFees: string; 
+/**
+ * `null` when the test is off.
+ */
+taxableResult: string | null; exemptResult: string | null }
+
+/**
  * A per-row note or problem. Never English prose: `key` is an i18n key
  * (`importWizard.row.*` in the `stocks` namespace, `validation.*` in
  * `common`) and `detail` the raw value it is about.
@@ -3482,6 +3657,54 @@ export type StockTag = { id: string; name: string; color: string | null; groupId
  * Stock tag group for organizing related tags
  */
 export type StockTagGroup = { id: string; name: string; description: string | null; createdAt: number }
+
+/**
+ * The report: summary, activity, per-ticker results, sales with lots, ledger and open lots.
+ */
+export type StockTransactionsReport = { currency: string; fxQuality: ConversionQuality; 
+/**
+ * The UTC day the service used.
+ */
+today: number; firstTransactionDay: number | null; summary: StockReportSummary; stats: StockReportStats; buckets: StockReportBucket[]; 
+/**
+ * Sorted by `resultAfterFees`, largest first.
+ */
+tickers: StockReportTickerResult[]; 
+/**
+ * Newest first.
+ */
+sales: StockReportSale[]; 
+/**
+ * Newest first.
+ */
+ledger: StockReportLedgerRow[]; 
+/**
+ * Oldest buy first.
+ */
+openLots: StockReportOpenLot[]; uncoveredTickers: string[] }
+
+/**
+ * Request of the report: the period (both days inclusive), the currency, the cost method and
+ * the optional holding-period test.
+ */
+export type StockTransactionsReportRequest = { 
+/**
+ * Inclusive, UTC midnight.
+ */
+fromDay: number; 
+/**
+ * Inclusive.
+ */
+toDay: number; reportCurrency: string; costMethod: StockReportCostMethod; 
+/**
+ * `None` = test off, otherwise 1..=600.
+ */
+holdingTestMonths: number | null }
+
+/**
+ * Remembered choices of the report page.
+ */
+export type StockTransactionsReportSettings = { costMethod: StockReportCostMethod; holdingTestEnabled: boolean; holdingTestMonths: number }
 
 /**
  * One value of the type column and what it means (TS `StockTypeValueMapping`).

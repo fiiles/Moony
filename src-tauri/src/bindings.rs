@@ -264,6 +264,22 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::StockInvestmentWithTags>();
     types.register::<crate::models::StocksAnalysis>();
 
+    // Stock transactions report
+    types.register::<crate::models::StockReportCostMethod>();
+    types.register::<crate::models::StockReportLedgerKind>();
+    types.register::<crate::models::StockTransactionsReportRequest>();
+    types.register::<crate::models::StockReportAmounts>();
+    types.register::<crate::models::StockReportSummary>();
+    types.register::<crate::models::StockReportStats>();
+    types.register::<crate::models::StockReportBucket>();
+    types.register::<crate::models::StockReportTickerResult>();
+    types.register::<crate::models::StockReportMatch>();
+    types.register::<crate::models::StockReportSale>();
+    types.register::<crate::models::StockReportLedgerRow>();
+    types.register::<crate::models::StockReportOpenLot>();
+    types.register::<crate::models::StockTransactionsReport>();
+    types.register::<crate::models::StockTransactionsReportSettings>();
+
     // Stock Monitor models
     types.register::<crate::models::WatchedStock>();
     types.register::<crate::models::WatchedStockRow>();

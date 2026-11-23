@@ -2750,6 +2750,137 @@ export interface StocksAnalysis {
 }
 
 // ============================================================================
+// Stock transactions report
+// ============================================================================
+
+export type StockReportCostMethod = 'fifo' | 'average';
+
+export interface StockTransactionsReportRequest {
+  fromDay: number; // inclusive, UTC midnight
+  toDay: number; // inclusive
+  reportCurrency: string;
+  costMethod: StockReportCostMethod;
+  holdingTestMonths: number | null; // null = test off, otherwise 1..=600
+}
+export interface StockReportAmounts {
+  proceeds: string;
+  cost: string;
+  result: string; // proceeds - cost
+  fees: string; // buy + sale fees of the sold pieces
+  resultAfterFees: string;
+}
+export interface StockReportSummary {
+  total: StockReportAmounts;
+  taxable: StockReportAmounts | null; // null when the test is off
+  exempt: StockReportAmounts | null;
+  salesCount: number; // counted sales
+  salesInProfit: number;
+  salesInLoss: number;
+}
+export interface StockReportStats {
+  proceeds: string; // every sale of the period, uncovered parts included
+  salesCount: number;
+  soldTickers: number;
+  bought: string;
+  buysCount: number;
+  boughtTickers: number;
+  feesPaid: string; // fees of every trade in the period
+  tradedVolume: string; // bought + proceeds
+  dividends: string;
+  dividendsCount: number;
+}
+export interface StockReportBucket {
+  key: string; // 'YYYY-MM', or 'YYYY' when the period spans more than 24 months
+  fromDay: number;
+  toDay: number;
+  buys: string;
+  sells: string;
+  result: string; // result after fees of the counted sales
+}
+export interface StockReportTickerResult {
+  investmentId: string;
+  ticker: string;
+  companyName: string;
+  quantity: string; // sold and counted
+  resultAfterFees: string;
+  taxableResult: string | null; // null when the test is off
+  exemptResult: string | null;
+}
+export interface StockReportMatch {
+  buyDay: number;
+  quantity: string;
+  buyPrice: string; // trade currency
+  buyCurrency: string;
+  buyRate: string | null; // report currency per 1 unit of buyCurrency at buyDay
+  averageCost: string | null; // per share, report currency; only with costMethod 'average'
+  proceeds: string | null;
+  cost: string | null;
+  fees: string | null;
+  resultAfterFees: string | null;
+  exempt: boolean | null; // null when the test is off
+}
+export interface StockReportSale {
+  id: string; // transaction id
+  investmentId: string;
+  ticker: string;
+  companyName: string;
+  day: number;
+  quantity: string; // whole sale
+  price: string; // trade currency
+  currency: string;
+  rate: string | null; // at the sale day
+  uncoveredQuantity: string; // '0' when every share has a lot
+  counted: boolean; // false when an amount could not be converted (D15)
+  matches: StockReportMatch[];
+}
+export interface StockReportLedgerRow {
+  id: string;
+  kind: 'buy' | 'sell' | 'dividend';
+  day: number; // ex-date for a dividend
+  investmentId: string;
+  ticker: string;
+  companyName: string;
+  quantity: string | null; // dividend: shares held, null for a manual one
+  price: string | null; // per share, trade currency; null for a manual dividend
+  currency: string;
+  rate: string | null;
+  amount: string | null; // report currency
+  fee: string | null; // trade currency, null when none
+}
+export interface StockReportOpenLot {
+  investmentId: string;
+  ticker: string;
+  companyName: string;
+  buyDay: number;
+  quantity: string; // still open
+  lotQuantity: string; // as bought
+  buyPrice: string;
+  buyCurrency: string;
+  passDay: number | null; // first day a sale is exempt; null when the test is off
+  value: string | null; // today
+  unrealized: string | null;
+}
+export interface StockTransactionsReport {
+  currency: string;
+  fxQuality: ConversionQuality;
+  today: number; // the UTC day the service used
+  firstTransactionDay: number | null;
+  summary: StockReportSummary;
+  stats: StockReportStats;
+  buckets: StockReportBucket[];
+  tickers: StockReportTickerResult[]; // sorted by resultAfterFees, largest first
+  sales: StockReportSale[]; // newest first
+  ledger: StockReportLedgerRow[]; // newest first
+  openLots: StockReportOpenLot[]; // oldest buy first
+  uncoveredTickers: string[];
+}
+export interface StockTransactionsReportSettings {
+  costMethod: StockReportCostMethod;
+  holdingTestEnabled: boolean;
+  holdingTestMonths: number;
+}
+
+// ============================================================================
 // MCP Server Types
 // ============================================================================
 

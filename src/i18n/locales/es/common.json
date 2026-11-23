@@ -282,6 +282,7 @@
     "oneTagPerGroup": "Una posición solo puede tener una etiqueta de cada grupo.",
     "tagGroupConflict": "Algunas posiciones ya tienen otra etiqueta en ese grupo.",
     "periodInvalid": "El inicio del periodo debe ser anterior a su final.",
+    "holdingTestMonthsInvalid": "Introduce un periodo de tenencia de 1 a 600 meses.",
     "tooManySeries": "Se han pedido demasiadas líneas a la vez.",
     "seriesKeyInvalid": "Solicitud de línea del gráfico no válida.",
     "benchmarkTickerInvalid": "Ticker de índice no válido.",

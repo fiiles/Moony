@@ -78,6 +78,7 @@ pub mod stock_monitor;
 pub mod stock_performance;
 pub mod stock_splits;
 pub mod stock_tags;
+pub mod stock_transactions_report;
 pub mod sync;
 pub mod temp_cleanup;
 pub mod ticker_history;

@@ -282,6 +282,7 @@
     "oneTagPerGroup": "Ett innehav kan bara ha en etikett från varje grupp.",
     "tagGroupConflict": "Vissa innehav har redan en annan etikett i den gruppen.",
     "periodInvalid": "Periodens början måste ligga före dess slut.",
+    "holdingTestMonthsInvalid": "Ange en innehavstid på 1 till 600 månader.",
     "tooManySeries": "För många linjer begärdes på en gång.",
     "seriesKeyInvalid": "Ogiltig begäran om diagramlinje.",
     "benchmarkTickerInvalid": "Ogiltig indexticker.",

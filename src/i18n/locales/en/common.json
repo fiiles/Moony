@@ -282,6 +282,7 @@
     "oneTagPerGroup": "A position can have only one tag from each group.",
     "tagGroupConflict": "Some positions already have another tag in that group.",
     "periodInvalid": "The start of the period must be before its end.",
+    "holdingTestMonthsInvalid": "Enter a holding period of 1 to 600 months.",
     "tooManySeries": "Too many lines requested at once.",
     "seriesKeyInvalid": "Invalid chart line request.",
     "benchmarkTickerInvalid": "Invalid index ticker.",

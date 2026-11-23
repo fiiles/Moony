@@ -282,6 +282,7 @@
     "oneTagPerGroup": "Pozice může mít z každé skupiny jen jeden štítek.",
     "tagGroupConflict": "Některé pozice už mají v té skupině jiný štítek.",
     "periodInvalid": "Začátek období musí být před jeho koncem.",
+    "holdingTestMonthsInvalid": "Zadejte dobu držení 1 až 600 měsíců.",
     "tooManySeries": "Najednou je požadováno příliš mnoho čar.",
     "seriesKeyInvalid": "Neplatný požadavek na čáru grafu.",
     "benchmarkTickerInvalid": "Neplatný ticker indexu.",

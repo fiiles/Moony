@@ -282,6 +282,7 @@
     "oneTagPerGroup": "En beholdning kan bare ha én etikett fra hver gruppe.",
     "tagGroupConflict": "Noen beholdninger har allerede en annen etikett i den gruppen.",
     "periodInvalid": "Starten på perioden må være før slutten.",
+    "holdingTestMonthsInvalid": "Oppgi en eierperiode på 1 til 600 måneder.",
     "tooManySeries": "For mange linjer ble forespurt samtidig.",
     "seriesKeyInvalid": "Ugyldig forespørsel om diagramlinje.",
     "benchmarkTickerInvalid": "Ugyldig indeksticker.",

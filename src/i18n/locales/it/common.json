@@ -282,6 +282,7 @@
     "oneTagPerGroup": "Una posizione può avere un solo tag per ogni gruppo.",
     "tagGroupConflict": "Alcune posizioni hanno già un altro tag in quel gruppo.",
     "periodInvalid": "L'inizio del periodo deve precedere la sua fine.",
+    "holdingTestMonthsInvalid": "Inserisci un periodo di detenzione da 1 a 600 mesi.",
     "tooManySeries": "Hai richiesto troppe linee contemporaneamente.",
     "seriesKeyInvalid": "Richiesta di linea del grafico non valida.",
     "benchmarkTickerInvalid": "Ticker dell'indice non valido.",

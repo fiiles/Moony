@@ -282,6 +282,7 @@
     "oneTagPerGroup": "Eine Position kann aus jeder Gruppe nur einen Tag haben.",
     "tagGroupConflict": "Einige Positionen haben in dieser Gruppe bereits einen anderen Tag.",
     "periodInvalid": "Der Beginn des Zeitraums muss vor seinem Ende liegen.",
+    "holdingTestMonthsInvalid": "Geben Sie eine Haltedauer von 1 bis 600 Monaten ein.",
     "tooManySeries": "Es wurden zu viele Linien auf einmal angefordert.",
     "seriesKeyInvalid": "Ungültige Anforderung einer Diagrammlinie.",
     "benchmarkTickerInvalid": "Ungültiger Index-Ticker.",

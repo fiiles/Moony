@@ -39,7 +39,7 @@ export function ActivityCard({
         return {
           // Unique per bar; the axis and the tooltip read their own texts
           label: b.key,
-          axisLabel: yearly ? b.key : fmt.month(date, { month: 'short', year: '2-digit' }),
+          axisLabel: yearly ? b.key : fmt.axisMonth(b.fromDay),
           title: yearly ? b.key : fmt.month(date, { month: 'long', year: 'numeric' }),
           a: Number(b.buys),
           b: Number(b.sells),

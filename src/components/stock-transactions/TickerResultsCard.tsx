@@ -48,8 +48,10 @@ export function TickerResultsCard({
   };
 
   const testLine = (row: StockReportTickerResult) => {
-    const taxable = Number(row.taxableResult ?? 0);
-    const exempt = Number(row.exemptResult ?? 0);
+    if (row.taxableResult === null || row.exemptResult === null) return null;
+    const taxable = Number(row.taxableResult);
+    const exempt = Number(row.exemptResult);
+    if (taxable === 0 && exempt === 0) return null;
     if (exempt === 0) return t('tickerResults.allTaxable');
     if (taxable === 0) return t('tickerResults.allExempt');
     return t('tickerResults.taxablePart', { amount: signedMoney(taxable) });
@@ -120,7 +122,7 @@ export function TickerResultsCard({
                     >
                       {signedMoney(result)}
                     </span>
-                    {testOn && (
+                    {testOn && testLine(row) && (
                       <small className="mt-[3px] block whitespace-nowrap text-micro font-500 text-ink-4">
                         {testLine(row)}
                       </small>

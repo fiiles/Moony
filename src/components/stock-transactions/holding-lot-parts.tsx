@@ -26,6 +26,9 @@ export function PassChip({
   const fmt = useFormat();
   const days = Math.round((passDay - today) / DAY_SECONDS);
   const urgent = days >= 0 && days <= 7;
+  // The compact chip drops the year only for a day in the current (UTC) year
+  const otherYear =
+    new Date(passDay * 1000).getUTCFullYear() !== new Date(today * 1000).getUTCFullYear();
 
   let relative: string;
   if (days === 0) relative = t('upcoming.relative.today');
@@ -46,13 +49,19 @@ export function PassChip({
   return (
     <span
       className={cn(
-        'grid h-[42px] min-w-0 place-content-center rounded-r2 px-1 text-center leading-tight',
+        'grid h-[42px] min-w-[60px] place-content-center rounded-r2 px-1 text-center leading-tight',
         urgent ? 'bg-dark-grad text-ink-inverse shadow-dark' : 'bg-well text-ink',
         className
       )}
     >
       <b className="block whitespace-nowrap text-table font-650 num">
-        {compact ? fmt.day(passDay, { day: 'numeric', month: 'numeric' }) : fmt.day(passDay)}
+        {compact
+          ? fmt.day(passDay, {
+              day: 'numeric',
+              month: 'numeric',
+              ...(otherYear ? { year: 'numeric' } : {}),
+            })
+          : fmt.day(passDay)}
       </b>
       <small
         className={cn(

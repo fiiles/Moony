@@ -59,11 +59,11 @@ export function HoldingTestCard({
       </CardHeader>
       <CardContent className={cn('transition-opacity duration-base', stale && 'opacity-50')}>
         {nearest.length > 0 ? (
-          <ul className="m-0 list-none p-0">
-            {nearest.map((lot) => (
+          <ul className="m-0 grid list-none grid-cols-2 gap-x-7 p-0 [&>li:nth-last-child(2):nth-child(odd)]:border-0">
+            {nearest.map((lot, i) => (
               <li
-                key={`${lot.investmentId}-${lot.buyDay}-${lot.quantity}`}
-                className="grid grid-cols-[60px_minmax(0,1fr)_auto] items-center gap-3 border-b border-line-soft py-2.5 last:border-0"
+                key={`${lot.investmentId}-${lot.buyDay}-${lot.quantity}-${i}`}
+                className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-line-soft py-2.5 last:border-0"
               >
                 {lot.passDay !== null && <PassChip passDay={lot.passDay} today={today} compact />}
                 <span className="min-w-0">

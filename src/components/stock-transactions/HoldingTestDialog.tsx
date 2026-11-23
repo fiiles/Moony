@@ -24,7 +24,7 @@ import { PassChip, UnrealizedCell } from './holding-lot-parts';
 
 type Tab = 'waiting' | 'passed';
 
-const COLUMNS = 'grid-cols-[104px_minmax(0,1.6fr)_minmax(0,1fr)_96px_124px]';
+const COLUMNS = 'grid-cols-[104px_minmax(0,1.5fr)_minmax(0,1fr)_92px_132px]';
 
 interface Groups {
   waiting: StockReportOpenLot[];
@@ -129,7 +129,7 @@ function LotsTable({
           )}
         />
       ) : (
-        <div className="max-h-[min(52vh,420px)] min-h-[160px] overflow-y-auto">
+        <div className="max-h-[min(52vh,420px)] min-h-[160px] overflow-y-auto pr-3 [scrollbar-gutter:stable]">
           <div role="table" className="min-w-0">
             <div
               role="row"
@@ -150,7 +150,7 @@ function LotsTable({
                 {t('upcoming.dialog.colUnrealized')}
               </span>
             </div>
-            {rows.map((lot) => {
+            {rows.map((lot, i) => {
               const quantity = Number(lot.quantity);
               const lotQuantity = Number(lot.lotQuantity);
               const quantityText =
@@ -163,7 +163,7 @@ function LotsTable({
                   : t('quantity', { count: quantity, value: num(lot.quantity) });
               return (
                 <div
-                  key={`${lot.investmentId}-${lot.buyDay}-${lot.quantity}`}
+                  key={`${lot.investmentId}-${lot.buyDay}-${lot.quantity}-${i}`}
                   role="row"
                   className={cn(
                     'grid items-center gap-x-3 border-b border-line-soft py-2.5 last:border-0',

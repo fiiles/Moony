@@ -150,7 +150,7 @@ mod tests {
             ),
             0
         );
-        // salary in each of the 48 months
+        // salary in each of the 49 months (paid on the 1st, so the current month has it)
         let salary_months = count(
             conn,
             "SELECT COUNT(DISTINCT strftime('%Y-%m', booking_date, 'unixepoch'))
@@ -158,14 +158,20 @@ mod tests {
                AND description = (SELECT description FROM bank_transactions
                                   WHERE category_id = 'cat_income' ORDER BY booking_date LIMIT 1)",
         );
-        let today = clock::date_of(clock::today(now));
-        // the salary of the current month only exists once the 25th has passed
-        let expected = if chrono::Datelike::day(&today) >= 25 {
-            49
-        } else {
-            48
-        };
-        assert_eq!(salary_months, expected);
+        assert_eq!(salary_months, 49);
+        assert!(salary_this_month(conn, now));
+        // at most one food delivery a day
+        let delivery = text::t("en", text::T::FoodDelivery);
+        assert_eq!(
+            count(
+                conn,
+                &format!(
+                    "SELECT COUNT(*) FROM (SELECT booking_date FROM bank_transactions
+                     WHERE description = '{delivery}' GROUP BY booking_date HAVING COUNT(*) > 1)"
+                )
+            ),
+            0
+        );
         let payments = count(conn, "SELECT COUNT(*) FROM bank_transactions");
         assert!((1_800..=2_800).contains(&payments), "payments {payments}");
         // every account stays non-negative on every day: replay the payments
@@ -176,13 +182,16 @@ mod tests {
             )
             .expect("prepare");
         let mut bal = std::collections::HashMap::<String, f64>::new();
-        // opening balance = first month-end record minus the payments up to that day
+        // opening balance = first record of the payment history minus the payments up to it
+        // (the year before the payments has records only)
         for (id, first_as_of, amount) in {
             let mut q = conn
                 .prepare(
                     "SELECT r.bank_account_id, r.as_of, CAST(r.amount AS REAL) FROM bank_balance_records r
                      WHERE r.as_of = (SELECT MIN(as_of) FROM bank_balance_records
-                                      WHERE bank_account_id = r.bank_account_id)",
+                                      WHERE bank_account_id = r.bank_account_id
+                                        AND as_of >= (SELECT MIN(booking_date)
+                                                      FROM bank_transactions))",
                 )
                 .expect("prepare");
             q.query_map([], |r| {
@@ -240,7 +249,24 @@ mod tests {
         );
         eprintln!("{:?}", summary.counts);
         check_invariants(&conn, now_2026());
-        assert!((2_500.0..=5_500.0).contains(&cur), "current {cur}");
+        // the salary arrives on the 1st, so mid-month the current account is fuller
+        assert!((2_500.0..=7_000.0).contains(&cur), "current {cur}");
+        let opening: Vec<f64> = {
+            let mut q = conn
+                .prepare(
+                    "SELECT CAST(r.amount AS REAL) FROM bank_balance_records r
+                     JOIN bank_accounts a ON a.id = r.bank_account_id
+                     WHERE a.currency = 'EUR'
+                       AND r.as_of = (SELECT MIN(booking_date) FROM bank_transactions) - 86400
+                     ORDER BY a.account_type",
+                )
+                .expect("prepare");
+            q.query_map([], |r| r.get(0))
+                .expect("query")
+                .collect::<std::result::Result<_, _>>()
+                .expect("rows")
+        };
+        eprintln!("opening balances (current, savings): {opening:?}");
         assert!((9_000.0..=16_000.0).contains(&sav), "savings {sav}");
         assert!((1_000.0..=1_400.0).contains(&trv), "travel {trv}");
     }
@@ -509,7 +535,7 @@ mod tests {
     fn investments_and_assets_match_their_facts() {
         let (conn, summary) = seeded("en", now_2026());
         eprintln!("{:?}", summary.counts);
-        assert!(invest::nvda_bought_before_split(now_2026()));
+        assert!(schedule::nvda_bought_before_split(now_2026()));
         check_assets(&conn, now_2026());
     }
 
@@ -523,9 +549,9 @@ mod tests {
     #[test]
     fn nvidia_is_bought_after_the_split_once_m43_passes_it() {
         let later = clock::day_of(NaiveDate::from_ymd_opt(2028, 3, 1).expect("date"));
-        assert!(!invest::nvda_bought_before_split(later));
+        assert!(!schedule::nvda_bought_before_split(later));
         let earlier = clock::day_of(NaiveDate::from_ymd_opt(2027, 12, 1).expect("date"));
-        assert!(invest::nvda_bought_before_split(earlier));
+        assert!(schedule::nvda_bought_before_split(earlier));
     }
 
     // --- derived history ----------------------------------------------------------------------
@@ -533,7 +559,7 @@ mod tests {
     fn check_history(conn: &Connection, summary: &DemoSummary, now: i64) {
         use crate::services::{fx_backfill, history_plan};
         let today = clock::today(now);
-        let first = clock::months_ago(now, assets::FLAT_BOUGHT_M, assets::FLAT_DAY);
+        let first = clock::months_ago(now, schedule::FLAT_BOUGHT_M, schedule::FLAT_DAY);
         // one row per day from the flat purchase to today; only today's is live
         let days = (today - first) / clock::DAY + 1;
         assert_eq!(
@@ -634,6 +660,45 @@ mod tests {
             );
             assert!(p.net_worth.is_some(), "{}", clock::date_of(p.recorded_at));
         }
+        // the first day already holds cash
+        assert!(points[0].classes.savings.is_some_and(|v| v > 0.0));
+        // no day moves net worth by more than 12 000 except a revaluation of the flat
+        let revaluations: std::collections::HashSet<i64> = {
+            let mut q = conn
+                .prepare(
+                    "SELECT v.valued_at FROM real_estate_valuations v
+                     JOIN real_estate r ON r.id = v.real_estate_id WHERE r.type = 'personal'",
+                )
+                .expect("prepare");
+            q.query_map([], |r| r.get(0))
+                .expect("query")
+                .collect::<std::result::Result<_, _>>()
+                .expect("rows")
+        };
+        let mut largest = (0.0_f64, 0_i64);
+        for pair in points.windows(2) {
+            let (a, b) = (&pair[0], &pair[1]);
+            let delta = b.net_worth.unwrap_or(0.0) - a.net_worth.unwrap_or(0.0);
+            let day = clock::today(b.recorded_at);
+            if delta.abs() > 12_000.0 {
+                eprintln!(
+                    "move {delta:.2} on {} (flat revaluation)",
+                    clock::date_of(day)
+                );
+                assert!(
+                    revaluations.contains(&day),
+                    "{delta} on {}",
+                    clock::date_of(day)
+                );
+            } else if delta.abs() > largest.0.abs() {
+                largest = (delta, day);
+            }
+        }
+        eprintln!(
+            "largest move without a revaluation: {:.2} on {}",
+            largest.0,
+            clock::date_of(largest.1)
+        );
     }
 
     #[test]
@@ -672,5 +737,96 @@ mod tests {
                 .expect("flat");
             assert_eq!(flat, text::t(lang, text::T::PropFlat));
         }
+    }
+
+    /// Whether the calendar month of `now` has a salary payment.
+    fn salary_this_month(conn: &Connection, now: i64) -> bool {
+        let from = clock::month_start(clock::today(now));
+        count(
+            conn,
+            &format!(
+                "SELECT COUNT(*) FROM bank_transactions
+                 WHERE description = '{}' AND tx_type = 'credit' AND booking_date >= {from}",
+                text::t("en", text::T::Salary)
+            ),
+        ) == 1
+    }
+
+    #[test]
+    fn the_current_month_has_its_salary_on_any_day() {
+        for (y, m, d) in [(2026, 10, 2), (2026, 9, 14), (2026, 8, 28)] {
+            let now = Utc
+                .with_ymd_and_hms(y, m, d, 12, 0, 0)
+                .single()
+                .expect("date")
+                .timestamp();
+            let (conn, _) = seeded("en", now);
+            assert!(salary_this_month(&conn, now), "{y}-{m}-{d}");
+            check_invariants(&conn, now);
+        }
+    }
+
+    #[test]
+    fn plans_are_sized_from_their_spend() {
+        let (conn, _) = seeded("en", now_2026());
+        let used: std::collections::HashMap<(String, i32), f64> =
+            crate::services::spending_plans::plan_index(&conn)
+                .expect("plans")
+                .into_iter()
+                .map(|s| {
+                    let spent: f64 = s.spent.and_then(|v| v.parse().ok()).unwrap_or(0.0);
+                    let amount: f64 = s.plan.amount.parse().expect("amount");
+                    eprintln!(
+                        "plan {} {}: {spent:.2} of {amount} ({:.0} %)",
+                        s.plan.name,
+                        s.plan.year,
+                        spent / amount * 100.0
+                    );
+                    ((s.plan.name, s.plan.year), spent / amount)
+                })
+                .collect();
+        let get = |name: &str, year: i32| used[&(name.to_string(), year)];
+        assert!((0.80..=0.95).contains(&get("Holiday", 2026)));
+        assert!((0.70..=0.90).contains(&get("Car", 2026)));
+        assert!((0.90..=1.05).contains(&get("Holiday", 2025)));
+        let christmas: String = conn
+            .query_row(
+                "SELECT amount FROM spending_plans WHERE name = 'Christmas and gifts'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("christmas");
+        assert_eq!(christmas.parse::<f64>().ok(), Some(600.0));
+    }
+
+    #[test]
+    fn broker_deposits_cover_the_stock_purchases() {
+        let (conn, _) = seeded("en", now_2026());
+        let deposits: f64 = conn
+            .query_row(
+                "SELECT SUM(CAST(amount AS REAL)) FROM bank_transactions
+                 WHERE description = 'Broker deposit' AND tx_type = 'debit'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("deposits");
+        // every buy in EUR at its day's rate, fee included
+        let cost: f64 = conn
+            .query_row(
+                "SELECT SUM((CAST(t.quantity AS REAL) * CAST(t.price_per_unit AS REAL)
+                             + CAST(t.fee AS REAL))
+                            / COALESCE((SELECT r.rate FROM exchange_rate_history r
+                                        WHERE r.currency = t.currency
+                                          AND r.date = t.transaction_date), 1.0))
+                 FROM investment_transactions t WHERE t.type = 'buy'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("cost");
+        eprintln!("broker deposits {deposits:.2} EUR, stock buys {cost:.2} EUR");
+        assert!(
+            deposits >= cost && deposits <= cost * 1.10,
+            "{deposits} vs {cost}"
+        );
     }
 }

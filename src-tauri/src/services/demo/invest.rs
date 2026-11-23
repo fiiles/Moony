@@ -21,7 +21,6 @@ use crate::services::stock_splits::InsertStockSplit;
 use crate::services::{
     bonds, crypto_investments, investments, stock_monitor, stock_splits, stock_tags,
 };
-use chrono::NaiveDate;
 use rusqlite::{params, Connection};
 use std::collections::HashMap;
 
@@ -31,53 +30,6 @@ const WIGGLE_SEED: u64 = 0x5354_4F43_4B53;
 const WIGGLE: f64 = 0.006;
 /// Fee of every stock trade, in the trade currency.
 const FEE: &str = "1";
-
-/// The NVIDIA 10:1 split.
-const NVDA_SPLIT: (i32, u32, u32) = (2024, 6, 10);
-const NVDA_SPLIT_RATIO: u32 = 10;
-/// Shares bought (in today's units) and sold.
-const NVDA_BOUGHT: f64 = 40.0;
-const NVDA_SOLD: f64 = 15.0;
-
-/// Single-stock trades: (ticker, company, [(Mn, day of month, quantity, sell)]).
-type Trades = &'static [(i32, u32, f64, bool)];
-const STOCKS: [(&str, &str, Trades); 5] = [
-    (
-        "MSFT",
-        "Microsoft Corporation",
-        &[
-            (40, 9, 12.0, false),
-            (28, 9, 6.0, false),
-            (10, 9, 4.0, false),
-        ],
-    ),
-    (
-        "AAPL",
-        "Apple Inc.",
-        &[(44, 6, 20.0, false), (18, 6, 10.0, false)],
-    ),
-    (
-        "ASML.AS",
-        "ASML Holding N.V.",
-        &[(35, 16, 6.0, false), (15, 16, 3.0, false)],
-    ),
-    ("ALV.DE", "Allianz SE", &[(30, 21, 12.0, false)]),
-    (
-        "PYPL",
-        "PayPal Holdings, Inc.",
-        &[(45, 7, 30.0, false), (31, 7, 30.0, true)],
-    ),
-];
-const VWCE: (&str, &str) = ("VWCE.DE", "Vanguard FTSE All-World UCITS ETF");
-const NVDA: (&str, &str) = ("NVDA", "NVIDIA Corporation");
-/// Day of the month of the monthly ETF purchase (the trading day before on a weekend).
-const VWCE_DAY: u32 = 28;
-/// Day of the month of the NVIDIA trades.
-const NVDA_DAY: u32 = 12;
-/// NVIDIA buy before the split (`M43`), the fallback buy after it (`M24`) and the sale (`M8`).
-const NVDA_BUY_M: i32 = 43;
-const NVDA_LATE_BUY_M: i32 = 24;
-const NVDA_SELL_M: i32 = 8;
 
 /// The tickers that pay dividends (Yahoo-style per-share events).
 const PAYERS: [&str; 5] = ["MSFT", "AAPL", "NVDA", "ASML.AS", "ALV.DE"];
@@ -205,28 +157,6 @@ const WATCHLIST: [Watch; 4] = [
     ("NOVO-B.CO", None, None),
 ];
 
-/// Friday for Saturday and Sunday (stock exchanges trade on weekdays).
-pub fn trading_day(day: i64) -> i64 {
-    let dow = (day.div_euclid(DAY) + 3).rem_euclid(7); // Monday = 0
-    if dow >= 5 {
-        day - (dow - 4) * DAY
-    } else {
-        day
-    }
-}
-
-/// UTC midnight of the NVIDIA split day.
-pub fn nvda_split_day() -> i64 {
-    let (y, m, d) = NVDA_SPLIT;
-    NaiveDate::from_ymd_opt(y, m, d).map_or(0, clock::day_of)
-}
-
-/// Whether NVIDIA is bought before its split (true for every `now` until about 2028); later
-/// the buy moves after the split ([`NVDA_LATE_BUY_M`]) and no split is recorded.
-pub fn nvda_bought_before_split(now: i64) -> bool {
-    trading_day(clock::months_ago(now, NVDA_BUY_M, NVDA_DAY)) < nvda_split_day()
-}
-
 fn price(ticker: &str, day: i64) -> Result<(f64, &'static str)> {
     prices::price_on(ticker, day)
         .ok_or_else(|| AppError::Internal(format!("demo: no built-in price for {ticker}")))
@@ -312,19 +242,34 @@ pub fn seed(conn: &Connection, opts: &DemoOptions, summary: &mut DemoSummary) ->
         trades: 0,
     };
 
-    // The monthly ETF plan: M46 to last month, 3-5 units on the 28th
-    for m in (1..=BROKER_FROM_M).rev() {
-        let day = trading_day(clock::months_ago(now, m, VWCE_DAY));
-        let units = book.rng.int_range(3, 5) as f64;
-        book.trade(VWCE.0, VWCE.1, day, units, false, 1.0)?;
+    // The trade calendar the bank funds: the monthly ETF plan, then the single stocks
+    for buy in etf_buys(now) {
+        book.trade(VWCE.0, VWCE.1, buy.day, buy.quantity, false, 1.0)?;
     }
-    for (ticker, company, trades) in STOCKS {
-        for (m, dom, quantity, sell) in trades {
-            let day = trading_day(clock::months_ago(now, *m, *dom));
-            book.trade(ticker, company, day, *quantity, *sell, 1.0)?;
+    for trade in stock_trades(now) {
+        book.trade(
+            trade.ticker,
+            trade.company,
+            trade.day,
+            trade.quantity,
+            trade.sell,
+            trade.units_factor,
+        )?;
+        // A buy entered in pre-split units is followed by the split, which rewrites it into
+        // today's units (a later Yahoo detection of the same day keeps this row:
+        // `record_detected` inserts with `ON CONFLICT DO NOTHING`).
+        if trade.units_factor > 1.0 {
+            stock_splits::record_manual(
+                book.conn,
+                &InsertStockSplit {
+                    ticker: trade.ticker.to_string(),
+                    effective_day: nvda_split_day(),
+                    numerator: format!("{}", trade.units_factor),
+                    denominator: "1".to_string(),
+                },
+            )?;
         }
     }
-    seed_nvidia(&mut book, now)?;
 
     // Dividends: per-share events from the first buy on, and the yearly sum
     let today = clock::today(now);
@@ -380,33 +325,6 @@ pub fn seed(conn: &Connection, opts: &DemoOptions, summary: &mut DemoSummary) ->
     summary.counts.insert("crypto_transactions", crypto_trades);
     summary.counts.insert("bonds", 1);
     Ok(())
-}
-
-/// NVIDIA: 4 shares before the 2024 split in that day's units, the 10:1 split recorded by
-/// hand (a later Yahoo detection of the same day keeps it: `record_detected` inserts with
-/// `ON CONFLICT DO NOTHING`), then 15 of today's 40 sold at `M8`. When `M43` is no longer
-/// before the split, 40 shares are bought at `M24` in today's units instead.
-fn seed_nvidia(book: &mut Book<'_>, now: i64) -> Result<()> {
-    let (ticker, company) = NVDA;
-    if nvda_bought_before_split(now) {
-        let day = trading_day(clock::months_ago(now, NVDA_BUY_M, NVDA_DAY));
-        let ratio = f64::from(NVDA_SPLIT_RATIO);
-        book.trade(ticker, company, day, NVDA_BOUGHT / ratio, false, ratio)?;
-        stock_splits::record_manual(
-            book.conn,
-            &InsertStockSplit {
-                ticker: ticker.to_string(),
-                effective_day: nvda_split_day(),
-                numerator: NVDA_SPLIT_RATIO.to_string(),
-                denominator: "1".to_string(),
-            },
-        )?;
-    } else {
-        let day = trading_day(clock::months_ago(now, NVDA_LATE_BUY_M, NVDA_DAY));
-        book.trade(ticker, company, day, NVDA_BOUGHT, false, 1.0)?;
-    }
-    let day = trading_day(clock::months_ago(now, NVDA_SELL_M, NVDA_DAY));
-    book.trade(ticker, company, day, NVDA_SOLD, true, 1.0)
 }
 
 /// Cached quotes and metadata for every position and watched ticker, fetched "now", with
@@ -601,7 +519,6 @@ fn seed_crypto(conn: &Connection, now: i64) -> Result<usize> {
 }
 
 /// Months before today the bond was bought, and months ahead it matures.
-const BOND_BOUGHT_M: i32 = 27;
 const BOND_MATURES_IN_M: i32 = 54;
 
 /// Six 1 000 EUR government bonds at 2.9 %, bought at `M27`, maturing in 54 months.
@@ -621,7 +538,7 @@ fn seed_bond(conn: &Connection, lang: &str, now: i64) -> Result<()> {
                 -BOND_MATURES_IN_M,
                 chrono::Datelike::day(&today),
             )),
-            purchase_date: Some(clock::months_ago(now, BOND_BOUGHT_M, 3)),
+            purchase_date: Some(clock::months_ago(now, BOND_BOUGHT_M, BOND_DAY)),
         },
     )?;
     Ok(())

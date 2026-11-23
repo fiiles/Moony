@@ -28,9 +28,6 @@ const INSURER: &str = "Aurora Insurance";
 /// The car (a model name, not translated).
 const CAR_NAME: &str = "Volkswagen Golf (2019)";
 
-/// The flat is bought (and the mortgage paid out) at `M60` on this day.
-pub const FLAT_BOUGHT_M: i32 = 60;
-pub const FLAT_DAY: u32 = 15;
 const FLAT_PRICE: &str = "248000";
 /// Later flat valuations: (Mn, EUR).
 const FLAT_VALUATIONS: [(i32, &str); 5] = [

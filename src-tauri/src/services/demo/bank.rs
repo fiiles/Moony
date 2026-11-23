@@ -178,6 +178,8 @@ fn generate(opts: &DemoOptions, names: [String; 3]) -> Vec<Pay> {
         names,
     };
 
+    let etf = etf_buys(now);
+    let mut delivery_days = std::collections::HashSet::new();
     for m in (0..=HISTORY_MONTHS).rev() {
         let date = clock::date_of(clock::months_ago(now, m, 1));
         let month = date.month();
@@ -190,10 +192,10 @@ fn generate(opts: &DemoOptions, names: [String; 3]) -> Vec<Pay> {
             13..=24 => 3_850.0,
             _ => 4_100.0,
         };
-        g.credit(d(25), c(salary), T::Salary, "Northwind Labs", "cat_income");
+        g.credit(d(1), c(salary), T::Salary, "Northwind Labs", "cat_income");
         if month == 3 {
             g.credit(
-                d(25),
+                d(1),
                 c(salary * 0.9),
                 T::Bonus,
                 "Northwind Labs",
@@ -326,6 +328,12 @@ fn generate(opts: &DemoOptions, names: [String; 3]) -> Vec<Pay> {
                     (T::FoodDelivery, "Wolt"),
                 ])
                 .unwrap_or(&(T::Restaurant, "Trattoria Sole"));
+            // at most one food delivery a day
+            let (desc, place) = if desc == T::FoodDelivery && !delivery_days.insert(d(dom)) {
+                (T::Restaurant, "Burger Brothers")
+            } else {
+                (desc, place)
+            };
             g.debit(d(dom), a, desc, place, "cat_dining");
         }
         if m <= CAR_BOUGHT_M {
@@ -421,7 +429,7 @@ fn generate(opts: &DemoOptions, names: [String; 3]) -> Vec<Pay> {
 
         // Transfers
         g.transfer(
-            d(26),
+            d(2),
             CUR,
             SAV,
             c(300.0),
@@ -430,12 +438,14 @@ fn generate(opts: &DemoOptions, names: [String; 3]) -> Vec<Pay> {
             T::TransferSavings,
             "cat_savings",
         );
-        if m <= BROKER_FROM_M {
+        // The month's ETF purchase, funded on the 3rd
+        if let Some(buy) = etf.iter().find(|b| b.m == m) {
+            let cost = buy.quantity * expected_price(VWCE.0, buy.day) + TRADE_FEE;
             g.debit(
-                d(27),
-                c(BROKER_DEPOSIT_EUR),
+                d(3),
+                c(next_50(cost)),
                 T::BrokerDeposit,
-                "Trade Republic",
+                BROKER,
                 "cat_investments",
             );
         }
@@ -491,6 +501,17 @@ fn generate(opts: &DemoOptions, names: [String; 3]) -> Vec<Pay> {
                 "cat_other",
             );
         }
+        if m == BOND_BOUGHT_M {
+            g.pay(
+                d(BOND_DAY),
+                SAV,
+                false,
+                c(BOND_PRICE_EUR),
+                T::BondName,
+                BROKER,
+                "cat_investments",
+            );
+        }
         if m == GOLD_BOUGHT_M {
             g.pay(
                 d(GOLD_DAY),
@@ -504,8 +525,10 @@ fn generate(opts: &DemoOptions, names: [String; 3]) -> Vec<Pay> {
         }
         for (i, month_n) in BTC_BUYS_M.iter().enumerate() {
             if m == *month_n {
-                g.debit(
+                g.pay(
                     d(BTC_DAY),
+                    SAV,
+                    false,
                     c(BTC_BUYS_EUR[i]),
                     T::CryptoPurchase,
                     "Kraken",
@@ -515,8 +538,10 @@ fn generate(opts: &DemoOptions, names: [String; 3]) -> Vec<Pay> {
         }
         for (i, month_n) in ETH_BUYS_M.iter().enumerate() {
             if m == *month_n {
-                g.debit(
+                g.pay(
                     d(ETH_DAY),
+                    SAV,
+                    false,
                     c(ETH_BUYS_EUR[i]),
                     T::CryptoPurchase,
                     "Kraken",
@@ -525,8 +550,10 @@ fn generate(opts: &DemoOptions, names: [String; 3]) -> Vec<Pay> {
             }
         }
         if m == ETH_SELL_M {
-            g.credit(
+            g.pay(
                 d(ETH_DAY),
+                SAV,
+                true,
                 c(ETH_SELL_EUR),
                 T::CryptoSale,
                 "Kraken",
@@ -536,8 +563,75 @@ fn generate(opts: &DemoOptions, names: [String; 3]) -> Vec<Pay> {
     }
 
     car_insurance(&mut g, now);
+    broker_funding(&mut g, now);
     trips(&mut g, opts);
     g.out
+}
+
+/// The broker the stock purchases go through.
+const BROKER: &str = "Trade Republic";
+/// Fee of a stock trade (in the trade currency).
+const TRADE_FEE: f64 = 1.0;
+/// Margin over the expected price, the most a trade price deviates from the close.
+const PRICE_MARGIN: f64 = 1.006;
+
+/// The next multiple of 50 above `eur`.
+fn next_50(eur: f64) -> f64 {
+    ((eur / 50.0).floor() + 1.0) * 50.0
+}
+
+/// Upper estimate of a trade price in EUR (today's units) on `day`, from the built-in closes.
+fn expected_price(ticker: &str, day: i64) -> f64 {
+    match prices::price_on(ticker, day) {
+        Some((price, "USD")) => price * PRICE_MARGIN / prices::usd_per_eur(day),
+        Some((price, _)) => price * PRICE_MARGIN,
+        None => 0.0,
+    }
+}
+
+/// Every single-stock purchase is funded from savings 2-4 days before it, with its expected
+/// cost in EUR rounded up to the next 50. Sale proceeds stay at the broker.
+fn broker_funding(g: &mut Gen, now: i64) {
+    for (i, trade) in stock_trades(now).iter().filter(|t| !t.sell).enumerate() {
+        let usd = matches!(prices::price_on(trade.ticker, trade.day), Some((_, "USD")));
+        let fee = if usd {
+            TRADE_FEE / prices::usd_per_eur(trade.day)
+        } else {
+            TRADE_FEE
+        };
+        let cost =
+            trade.quantity * trade.units_factor * expected_price(trade.ticker, trade.day) + fee;
+        g.pay(
+            trade.day - (2 + i as i64 % 3) * DAY,
+            SAV,
+            false,
+            c(next_50(cost)),
+            T::BrokerDeposit,
+            BROKER,
+            "cat_investments",
+        );
+    }
+}
+
+/// Days a dated fact moves money between the savings account and another class (a purchase,
+/// a crypto sale, a stock trade, the extra repayment): each gets a savings balance record of
+/// its own, so the history moves the cash on the same day as the asset.
+fn event_days(now: i64) -> std::collections::BTreeSet<i64> {
+    let m = |n: i32, dom: u32| clock::months_ago(now, n, dom);
+    let mut days: std::collections::BTreeSet<i64> = [
+        m(CAR_BOUGHT_M, CAR_DAY),
+        m(PARKING_BOUGHT_M, PARKING_DAY),
+        m(GOLD_BOUGHT_M, GOLD_DAY),
+        m(BOND_BOUGHT_M, BOND_DAY),
+        m(EXTRA_MORTGAGE_M, EXTRA_MORTGAGE_DAY),
+        m(ETH_SELL_M, ETH_DAY),
+    ]
+    .into_iter()
+    .collect();
+    days.extend(BTC_BUYS_M.iter().map(|n| m(*n, BTC_DAY)));
+    days.extend(ETH_BUYS_M.iter().map(|n| m(*n, ETH_DAY)));
+    days.extend(stock_trades(now).iter().map(|t| t.day));
+    days
 }
 
 /// Yearly car premium on the policy anniversaries ([`car_premium_days`]); the next one falls
@@ -665,10 +759,55 @@ fn trips(g: &mut Gen, opts: &DemoOptions) {
     }
 }
 
+/// Seed of the year before the payment history (its own stream).
+const PRE_SEED: u64 = 0x5052_4548_4953;
+/// How much lower the savings are at the flat purchase than at the opening of the payments.
+const PRE_SAVINGS_GAP_EUR: f64 = 12_000.0;
+
+/// Balance records of the current and savings accounts for the twelve months before the
+/// payment history (no payments): one on the flat purchase day, so the first day of the
+/// net-worth history holds cash, then every month end up to the day before the payments start,
+/// which equals the opening balances. Savings rise unevenly from about 12 000 below the
+/// opening (never above it); the current account wanders between about 2 300 and 3 400.
+fn pre_history(now: i64, open_savings: i64) -> Vec<Snapshot> {
+    let mut rng = Rng::with_seed(PRE_SEED);
+    let mut days = vec![clock::months_ago(now, FLAT_BOUGHT_M, FLAT_DAY)];
+    days.extend(
+        ((HISTORY_MONTHS + 1)..=FLAT_BOUGHT_M)
+            .rev()
+            .map(|n| clock::month_end(clock::months_ago(now, n, 1))),
+    );
+    let last = days.len() - 1;
+    days.into_iter()
+        .enumerate()
+        .map(|(k, day)| {
+            let bal = if k == last {
+                [c(OPEN_CURRENT_EUR), open_savings, 0]
+            } else {
+                let rest = 1.0 - k as f64 / last as f64;
+                let savings =
+                    open_savings - c(PRE_SAVINGS_GAP_EUR * rest) + c(rng.range(-350.0, 250.0));
+                [
+                    c(rng.range(2_300.0, 3_400.0)),
+                    savings.min(open_savings - c(40.0)),
+                    0,
+                ]
+            };
+            Snapshot {
+                day,
+                bal,
+                savings_only: false,
+            }
+        })
+        .collect()
+}
+
 /// The balances at the end of a simulated day.
 struct Snapshot {
     day: i64,
     bal: [i64; 3],
+    /// A record of the savings account alone (the day of a fact it funds), not a month end.
+    savings_only: bool,
 }
 
 fn apply(bal: &mut [i64; 3], p: &Pay) {
@@ -686,6 +825,7 @@ fn simulate(
     names: &[String; 3],
     scheduled: &[Pay],
     open_savings: i64,
+    events: &std::collections::BTreeSet<i64>,
 ) -> (Vec<Pay>, Vec<Snapshot>, i64) {
     let today = clock::today(opts.now);
     let start = clock::months_ago(opts.now, HISTORY_MONTHS, 1);
@@ -783,8 +923,13 @@ fn simulate(
                 }
             }
         }
-        if day == clock::month_end(day) || day == today {
-            snaps.push(Snapshot { day, bal });
+        let regular = day == clock::month_end(day) || day == today;
+        if regular || events.contains(&day) {
+            snaps.push(Snapshot {
+                day,
+                bal,
+                savings_only: !regular,
+            });
         }
         day += DAY;
     }
@@ -805,11 +950,13 @@ pub fn seed(
     ];
 
     let scheduled = generate(opts, names.clone());
+    let events = event_days(opts.now);
     // A different `now` moves the big purchases against the seasonal income, so the opening
     // savings are raised (in whole thousands) until the savings account never runs dry.
     let mut open_savings = c(OPEN_SAVINGS_EUR);
     let (payments, snaps) = loop {
-        let (payments, snaps, min_savings) = simulate(opts, &names, &scheduled, open_savings);
+        let (payments, snaps, min_savings) =
+            simulate(opts, &names, &scheduled, open_savings, &events);
         if min_savings >= c(MIN_SAVINGS_EUR) || open_savings > c(500_000.0) {
             break (payments, snaps);
         }
@@ -898,12 +1045,19 @@ pub fn seed(
     }
     tx.commit()?;
 
+    // The year before the payments: month-end records only, from the flat purchase on
+    let mut snaps = snaps;
+    snaps.splice(0..0, pre_history(opts.now, open_savings));
+
     // Month-end balance records; the travel account starts with its first use.
     let first_travel = payments.iter().find(|p| p.acct == TRV).map(|p| p.day);
     let mut records = 0;
     for s in &snaps {
         for acct in 0..3 {
             if acct == TRV && first_travel.is_none_or(|d| s.day < d) {
+                continue;
+            }
+            if s.savings_only && acct != SAV {
                 continue;
             }
             bank_accounts::record_balance(

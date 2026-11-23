@@ -39,6 +39,11 @@ const COLOR_HOLIDAY: &str = "#06B6D4";
 const COLOR_CHRISTMAS: &str = "#EF4444";
 const COLOR_CAR: &str = "#64748B";
 
+/// Share of a plan its tagged payments use: this year's holiday, the car, last year's holiday.
+const HOLIDAY_USED: f64 = 0.87;
+const CAR_USED: f64 = 0.80;
+const LAST_HOLIDAY_USED: f64 = 0.97;
+
 fn plan(name: &str, year: i32, amount: &str, icon: &str, color: &str) -> InsertSpendingPlan {
     InsertSpendingPlan {
         name: name.to_string(),
@@ -113,8 +118,9 @@ pub fn seed(conn: &Connection, opts: &DemoOptions, summary: &mut DemoSummary) ->
     // Spending plans: this year's three, last year's closed holiday
     let year = clock::date_of(clock::today(now)).year();
     let holiday = t(lang, T::PlanHoliday);
+    // Placeholder amounts: each plan is sized from what was tagged to it (below)
     let this_holiday =
-        spending_plans::create_plan(conn, &plan(holiday, year, "2800", "plane", COLOR_HOLIDAY))?;
+        spending_plans::create_plan(conn, &plan(holiday, year, "100", "plane", COLOR_HOLIDAY))?;
     let christmas = spending_plans::create_plan(
         conn,
         &plan(
@@ -127,11 +133,11 @@ pub fn seed(conn: &Connection, opts: &DemoOptions, summary: &mut DemoSummary) ->
     )?;
     let car = spending_plans::create_plan(
         conn,
-        &plan(t(lang, T::PlanCar), year, "1200", "car", COLOR_CAR),
+        &plan(t(lang, T::PlanCar), year, "100", "car", COLOR_CAR),
     )?;
     let last_holiday = spending_plans::create_plan(
         conn,
-        &plan(holiday, year - 1, "2500", "plane", COLOR_HOLIDAY),
+        &plan(holiday, year - 1, "100", "plane", COLOR_HOLIDAY),
     )?;
 
     let tag = |ids: Vec<String>, plan_id: &str| -> Vec<SpendingPlanAssignment> {
@@ -173,6 +179,37 @@ pub fn seed(conn: &Connection, opts: &DemoOptions, summary: &mut DemoSummary) ->
         .counts
         .insert("spending_plan_tags", assignments.len());
     spending_plans::set_transaction_plans(conn, &assignments, false)?;
+
+    // Size the plans from their tagged spend: this year's holiday about 87 % used, the car
+    // about 80 %, last year's holiday about 97 % (Christmas keeps its 600)
+    let spent: std::collections::HashMap<String, f64> = spending_plans::plan_index(conn)?
+        .into_iter()
+        .map(|s| {
+            let value = s.spent.and_then(|v| v.parse().ok()).unwrap_or(0.0);
+            (s.plan.id, value)
+        })
+        .collect();
+    for (planned, used) in [
+        (&this_holiday, HOLIDAY_USED),
+        (&car, CAR_USED),
+        (&last_holiday, LAST_HOLIDAY_USED),
+    ] {
+        let spend = spent.get(&planned.id).copied().unwrap_or(0.0);
+        let amount = ((spend / used / 100.0).round() * 100.0).max(100.0);
+        spending_plans::update_plan(
+            conn,
+            &planned.id,
+            &InsertSpendingPlan {
+                name: planned.name.clone(),
+                year: planned.year,
+                amount: format!("{amount:.0}"),
+                currency: planned.currency.clone(),
+                icon: planned.icon.clone(),
+                color: planned.color.clone(),
+                note: planned.note.clone(),
+            },
+        )?;
+    }
 
     spending_plans::set_plan_closed(conn, &last_holiday.id, true)?;
     let closed_at = clock::day_of(NaiveDate::from_ymd_opt(year - 1, 12, 31).unwrap_or_default());

@@ -79,7 +79,7 @@ business logic and currency conversion would live in React, outside the tested l
 figures could drift from the Rust ones.
 
 **C. Teach `cost_basis.rs` about lots.** Rejected: its weighted-average semantics are read all over
-the app (positions, history, MCP) and stay as they are (ADR 0001). The report reuses its replay
+the app (positions, history, MCP) and stay as they are. The report reuses its replay
 order and its conversion rules but keeps the lot logic to itself.
 
 **D. Store lots in a table.** Rejected: lots are a pure function of the transactions; a stored copy
@@ -294,7 +294,7 @@ Frontend: tests for the filter-and-total utilities. Components and hooks are out
 ## 6. Documents to write with the feature
 
 - ADR 0036: lots matched oldest-first exist only in this report; the cost basis elsewhere stays the
-  weighted average (ADR 0001).
+  weighted average of `services/cost_basis.rs`.
 - `docs/design-system/README.md` (D20), the feature list in the README, all ten locales (a new
   `stockTransactions` namespace and `nav.stockTransactions`).
 

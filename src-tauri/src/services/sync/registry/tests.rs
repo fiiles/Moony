@@ -211,7 +211,7 @@ fn user_profile_is_the_profile_singleton() {
 }
 
 #[test]
-fn the_app_config_allowlist_is_exactly_the_five_keys() {
+fn the_app_config_allowlist_is_exactly_the_six_keys() {
     assert_eq!(
         APP_CONFIG_SYNCED_KEYS,
         [
@@ -219,7 +219,8 @@ fn the_app_config_allowlist_is_exactly_the_five_keys() {
             "learned_csv_formats",
             "milestones.mutedKinds",
             "rule_packs_enabled",
-            "rule_packs_disabled_rules"
+            "rule_packs_disabled_rules",
+            "stock_transactions_report"
         ]
     );
 }

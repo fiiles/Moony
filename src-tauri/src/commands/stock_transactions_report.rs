@@ -3,7 +3,9 @@
 
 use crate::db::Database;
 use crate::error::Result;
-use crate::models::{StockTransactionsReport, StockTransactionsReportRequest};
+use crate::models::{
+    StockTransactionsReport, StockTransactionsReportRequest, StockTransactionsReportSettings,
+};
 use crate::services::stock_transactions_report;
 use tauri::State;
 
@@ -17,4 +19,21 @@ pub async fn get_stock_transactions_report(
     request.validate()?;
     let today = chrono::Utc::now().timestamp();
     db.with_conn(|conn| stock_transactions_report::report(conn, &request, today))
+}
+
+/// The remembered cost method and holding test of the report page.
+#[tauri::command]
+pub async fn get_stock_transactions_report_settings(
+    db: State<'_, Database>,
+) -> Result<StockTransactionsReportSettings> {
+    db.with_conn(stock_transactions_report::settings::load)
+}
+
+/// Remembers the cost method and holding test; refuses a test length outside 1..=600 months.
+#[tauri::command]
+pub async fn save_stock_transactions_report_settings(
+    db: State<'_, Database>,
+    settings: StockTransactionsReportSettings,
+) -> Result<()> {
+    db.with_conn(|conn| stock_transactions_report::settings::save(conn, &settings))
 }

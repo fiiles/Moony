@@ -1901,7 +1901,11 @@ export const budgetingApi = {
 // Stock transactions report API
 // ============================================================================
 
-import type { StockTransactionsReport, StockTransactionsReportRequest } from '@shared/schema';
+import type {
+  StockTransactionsReport,
+  StockTransactionsReportRequest,
+  StockTransactionsReportSettings,
+} from '@shared/schema';
 
 export type {
   StockReportCostMethod,
@@ -1923,6 +1927,11 @@ export const stockTransactionsApi = {
   /** Realized sales, trades, dividends and open lots of a period (spec 2026-11-23). */
   getReport: (request: StockTransactionsReportRequest) =>
     tauriInvoke<StockTransactionsReport>('get_stock_transactions_report', { request }),
+  /** The remembered cost method and holding test (synced `app_config` key). */
+  getSettings: () =>
+    tauriInvoke<StockTransactionsReportSettings>('get_stock_transactions_report_settings'),
+  saveSettings: (settings: StockTransactionsReportSettings) =>
+    tauriInvoke<void>('save_stock_transactions_report_settings', { settings }),
 };
 
 // ============================================================================

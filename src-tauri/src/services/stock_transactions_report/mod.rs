@@ -5,6 +5,7 @@ pub mod activity;
 pub mod lots;
 pub mod open_lots;
 pub mod sales;
+pub mod settings;
 
 use rusqlite::Connection;
 

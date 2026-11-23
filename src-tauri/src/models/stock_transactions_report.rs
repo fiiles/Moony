@@ -10,7 +10,7 @@ use crate::error::{AppError, Result};
 use crate::services::fx;
 
 /// Longest holding-period test, in months.
-const MAX_HOLDING_TEST_MONTHS: i64 = 600;
+pub const MAX_HOLDING_TEST_MONTHS: i64 = 600;
 
 /// How the cost of a sold share is determined.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]

@@ -3,12 +3,13 @@
 use super::{KeyShape, SourceRows, TableClass, TableSpec};
 
 /// `app_config` keys that sync; every other key stays on the device.
-pub const APP_CONFIG_SYNCED_KEYS: [&str; 5] = [
+pub const APP_CONFIG_SYNCED_KEYS: [&str; 6] = [
     "stock_import_formats",
     "learned_csv_formats",
     "milestones.mutedKinds",
     "rule_packs_enabled",
     "rule_packs_disabled_rules",
+    "stock_transactions_report",
 ];
 
 const BASE: TableSpec = TableSpec {

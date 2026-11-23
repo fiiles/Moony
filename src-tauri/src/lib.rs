@@ -408,6 +408,8 @@ async fn run_app() {
             commands::investments::update_investment_transaction,
             commands::stock_dividends::get_stock_dividends,
             commands::stock_transactions_report::get_stock_transactions_report,
+            commands::stock_transactions_report::get_stock_transactions_report_settings,
+            commands::stock_transactions_report::save_stock_transactions_report_settings,
             commands::stock_dividends::create_stock_dividend,
             commands::stock_dividends::update_stock_dividend,
             commands::stock_dividends::delete_stock_dividend,

@@ -1,34 +1,39 @@
+import { useMemo } from 'react';
 import { Link } from 'wouter';
 import { useTranslation } from 'react-i18next';
-import { ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import type { TransactionCategory } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
 import { useDatedMainConvert } from '@/hooks/use-fx';
 import { ConvertedMoney } from '@/components/common/ConvertedMoney';
 import { AssetLogo } from '@/components/common/AssetLogo';
+import { CategoryIconChip } from '@/components/common/CategoryIcon';
+import { useCategories } from '@/hooks/use-categories';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { cn } from '@/lib/utils';
 import type { MoveKind, RecentMove } from '@/hooks/use-recent-moves';
 
 /**
- * The row's mark: a bank move's direction in a `well` square, a trade its
- * instrument's logo (the ticker's initials while there is none), as on the phone.
+ * The row's mark, as on the phone: a bank move its category's chip (a grey tag
+ * while uncategorized), a trade its instrument's logo (the ticker's initials
+ * while there is none).
  */
-function MoveMark({ move }: { move: RecentMove }) {
+function MoveMark({
+  move,
+  category,
+}: {
+  move: RecentMove;
+  category: TransactionCategory | undefined;
+}) {
   if (move.kind === 'bankIn' || move.kind === 'bankOut') {
-    const Icon = move.kind === 'bankIn' ? ArrowDownLeft : ArrowUpRight;
-    return (
-      <i className="grid size-[29px] place-items-center rounded-r2 bg-well text-ink-2">
-        <Icon className="size-[15px]" strokeWidth={1.75} aria-hidden />
-      </i>
-    );
+    return <CategoryIconChip category={category} className="size-[30px]" />;
   }
   const crypto: MoveKind[] = ['cryptoBuy', 'cryptoSell'];
   return <AssetLogo ticker={move.source} type={crypto.includes(move.kind) ? 'crypto' : 'stock'} />;
 }
 
 /**
- * "Poslední pohyby" rows (design system §7 Overview): a bank move's icon in a
- * `well` square or a trade's instrument logo, title + "Dnes · Spořicí účet", signed amount right. Only a bank credit is
+ * "Poslední pohyby" rows (design system §7 Overview): a bank move's category
+ * chip or a trade's instrument logo, title + "Dnes · Spořicí účet", signed amount right. Only a bank credit is
  * green with a plus; a debit carries a minus in ink; buys and sells are
  * neutral amounts whose direction is in the title. Each amount is in the main
  * currency at the rates of its own day; without a rate it stays native with the
@@ -40,6 +45,8 @@ export function RecentMoves({ moves, isLoading }: { moves: RecentMove[]; isLoadi
   const today = utcDayFloor(Date.now() / 1000);
   const first = moves.length ? Math.min(...moves.map((m) => m.date)) : undefined;
   const { ready, convertAt } = useDatedMainConvert(first);
+  const { categories } = useCategories();
+  const categoryById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
 
   const dayLabel = (date: number) => {
     const day = utcDayFloor(date);
@@ -88,7 +95,10 @@ export function RecentMoves({ moves, isLoading }: { moves: RecentMove[]; isLoadi
               href={move.href}
               className="grid grid-cols-[30px_1fr_auto] items-center gap-[11px] py-[11px] text-ink hover:text-ink focus-visible:outline-none focus-visible:shadow-focus"
             >
-              <MoveMark move={move} />
+              <MoveMark
+                move={move}
+                category={move.categoryId ? categoryById.get(move.categoryId) : undefined}
+              />
               <span className="min-w-0">
                 <b className="block truncate text-table font-650">{title}</b>
                 <small className="mt-[3px] block truncate text-micro font-500 text-ink-4">

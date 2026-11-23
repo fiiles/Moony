@@ -176,6 +176,8 @@
       "emptyWaitingBody": "Wszystkie posiadane zakupy przeszły już test okresu posiadania.",
       "emptyPassedTitle": "Jeszcze nic nie przeszło",
       "emptyPassedBody": "Żaden posiadany zakup nie przeszedł jeszcze testu okresu posiadania.",
+      "emptySearchTitle": "Nic nie znaleziono",
+      "emptySearchBody": "Żaden posiadany zakup nie pasuje do wyszukiwania.",
       "ofLot_one": "{{open}} z {{lot}} szt.",
       "ofLot_few": "{{open}} z {{lot}} szt.",
       "ofLot_many": "{{open}} z {{lot}} szt.",

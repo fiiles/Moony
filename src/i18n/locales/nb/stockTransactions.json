@@ -148,6 +148,8 @@
       "emptyWaitingBody": "Alle kjøp du eier har allerede bestått eiertidstesten.",
       "emptyPassedTitle": "Ingenting bestått ennå",
       "emptyPassedBody": "Ingen kjøp du eier har bestått eiertidstesten ennå.",
+      "emptySearchTitle": "Ingen treff",
+      "emptySearchBody": "Ingen kjøp du eier, samsvarer med søket.",
       "ofLot_one": "{{open}} av {{lot}} aksje",
       "ofLot_other": "{{open}} av {{lot}} aksjer",
       "perShare": "til {{price}} per aksje",

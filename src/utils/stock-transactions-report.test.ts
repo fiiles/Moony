@@ -296,6 +296,18 @@ describe('openLotsByTicker', () => {
     expect(groups[0].value).toBeCloseTo(300.3, 6);
     expect(groups[0].unrealized).toBeCloseTo(-20.05, 6);
   });
+  it('keeps only the positions whose ticker or name matches the search', () => {
+    const lots = [
+      lot({ investmentId: 'a', ticker: 'AAPL', companyName: 'Apple Inc.' }),
+      lot({ investmentId: 'b', ticker: 'MSFT', companyName: 'Microsoft Corporation' }),
+      lot({ investmentId: 'a', ticker: 'AAPL', companyName: 'Apple Inc.' }),
+    ];
+    expect(openLotsByTicker(lots, ' aap ').map((g) => g.ticker)).toEqual(['AAPL']);
+    expect(openLotsByTicker(lots, 'aap')[0].lots).toHaveLength(2);
+    expect(openLotsByTicker(lots, 'microsoft').map((g) => g.ticker)).toEqual(['MSFT']);
+    expect(openLotsByTicker(lots, '')).toHaveLength(2);
+    expect(openLotsByTicker(lots, 'tesla')).toEqual([]);
+  });
   it('has no value when none of its lots is priced', () => {
     const groups = openLotsByTicker([
       lot({ investmentId: 'a', value: null, unrealized: null }),

@@ -134,6 +134,8 @@
       "emptyWaitingBody": "保有中のすべての購入が保有期間テストを通過しています。",
       "emptyPassedTitle": "まだ通過したものはありません",
       "emptyPassedBody": "保有中の購入で、まだ保有期間テストを通過したものはありません。",
+      "emptySearchTitle": "見つかりません",
+      "emptySearchBody": "検索に一致する保有中の購入はありません。",
       "ofLot_other": "{{lot}} 株中 {{open}} 株",
       "perShare": "1 株あたり {{price}}",
       "groupLots_other": "{{count}}件の購入"

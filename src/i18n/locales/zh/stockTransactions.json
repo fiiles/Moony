@@ -134,6 +134,8 @@
       "emptyWaitingBody": "您持有的所有买入都已通过持有期测试。",
       "emptyPassedTitle": "尚无通过的",
       "emptyPassedBody": "您持有的买入还没有通过持有期测试。",
+      "emptySearchTitle": "未找到",
+      "emptySearchBody": "没有与搜索匹配的持有买入。",
       "ofLot_other": "共 {{lot}} 股中的 {{open}} 股",
       "perShare": "每股 {{price}}",
       "groupLots_other": "{{count}} 笔买入"

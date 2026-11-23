@@ -148,6 +148,8 @@
       "emptyWaitingBody": "Every buy you hold has already passed the holding test.",
       "emptyPassedTitle": "Nothing has passed yet",
       "emptyPassedBody": "No buy you hold has passed the holding test yet.",
+      "emptySearchTitle": "Nothing found",
+      "emptySearchBody": "No buy you hold matches the search.",
       "ofLot_one": "{{open}} of {{lot}} share",
       "ofLot_other": "{{open}} of {{lot}} shares",
       "perShare": "{{price}} per share",

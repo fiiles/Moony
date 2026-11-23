@@ -148,6 +148,8 @@
       "emptyWaitingBody": "Alle gehaltenen Käufe haben die Haltefrist bereits erreicht.",
       "emptyPassedTitle": "Noch nichts erreicht",
       "emptyPassedBody": "Noch kein gehaltener Kauf hat die Haltefrist erreicht.",
+      "emptySearchTitle": "Nichts gefunden",
+      "emptySearchBody": "Kein gehaltener Kauf passt zur Suche.",
       "ofLot_one": "{{open}} von {{lot}} Stück",
       "ofLot_other": "{{open}} von {{lot}} Stück",
       "perShare": "zu {{price}} je Stück",

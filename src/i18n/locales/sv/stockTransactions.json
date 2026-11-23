@@ -148,6 +148,8 @@
       "emptyWaitingBody": "Alla köp du äger har redan klarat innehavstidstestet.",
       "emptyPassedTitle": "Inget klarat ännu",
       "emptyPassedBody": "Inget köp du äger har klarat innehavstidstestet ännu.",
+      "emptySearchTitle": "Inga träffar",
+      "emptySearchBody": "Inget köp du äger matchar sökningen.",
       "ofLot_one": "{{open}} av {{lot}} aktie",
       "ofLot_other": "{{open}} av {{lot}} aktier",
       "perShare": "till {{price}} per aktie",

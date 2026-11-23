@@ -162,6 +162,8 @@
       "emptyWaitingBody": "Všechny držené nákupy už časovým testem prošly.",
       "emptyPassedTitle": "Zatím nic neprošlo",
       "emptyPassedBody": "Žádný držený nákup ještě časový test nepřekročil.",
+      "emptySearchTitle": "Nic nenalezeno",
+      "emptySearchBody": "Hledání neodpovídá žádný držený nákup.",
       "ofLot_one": "{{open}} z {{lot}} ks",
       "ofLot_few": "{{open}} z {{lot}} ks",
       "ofLot_other": "{{open}} z {{lot}} ks",

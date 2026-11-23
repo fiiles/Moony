@@ -205,10 +205,12 @@ export interface OpenLotGroup {
 /**
  * Open lots grouped by position. The groups come in the order of their first lot and keep the
  * order of the lots, so a list sorted by pass day gives the position with the nearest day first.
+ * A search keeps only the positions whose ticker or name contains it.
  */
-export function openLotsByTicker(lots: StockReportOpenLot[]): OpenLotGroup[] {
+export function openLotsByTicker(lots: StockReportOpenLot[], search = ''): OpenLotGroup[] {
   const groups = new Map<string, OpenLotGroup>();
   for (const lot of lots) {
+    if (!matchesSearch(search, lot.ticker, lot.companyName)) continue;
     let group = groups.get(lot.investmentId);
     if (!group) {
       group = {

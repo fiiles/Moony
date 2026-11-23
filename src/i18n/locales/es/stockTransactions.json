@@ -162,6 +162,8 @@
       "emptyWaitingBody": "Todas las compras que mantienes ya superaron el plazo de tenencia.",
       "emptyPassedTitle": "Aún nada superado",
       "emptyPassedBody": "Ninguna compra que mantienes ha superado todavía el plazo de tenencia.",
+      "emptySearchTitle": "Sin resultados",
+      "emptySearchBody": "Ninguna compra en cartera coincide con la búsqueda.",
       "ofLot_one": "{{open}} de {{lot}} acción",
       "ofLot_many": "{{open}} de {{lot}} acciones",
       "ofLot_other": "{{open}} de {{lot}} acciones",

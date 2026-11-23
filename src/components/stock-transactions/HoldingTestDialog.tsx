@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CalendarClock } from 'lucide-react';
+import { CalendarClock, Search } from 'lucide-react';
 import type { StockReportOpenLot } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
 import { useReportMoney } from '@/lib/use-report-money';
@@ -18,6 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Input, InputWrap } from '@/components/ui/input';
 import { Segmented } from '@/components/ui/segmented';
 import { holdingLength } from './holding-length';
 import { lotName } from './holding-lot-helpers';
@@ -37,7 +38,8 @@ interface Groups {
  * that have passed, grouped by position (owner, 2026-11-23): a head row per position with its
  * open quantity, value and unrealized result, then its lots with the day the sale passes (or
  * passed), the open quantity of the bought quantity, the purchase day and price. The positions
- * follow their nearest day. Plain
+ * follow their nearest day; the search on the right above the table narrows them by ticker or
+ * name. Plain
  * scrolling content: no Select or Popover in here (wheel scrolling over a portaled popover inside
  * a dialog is blocked in the WebKit webview).
  */
@@ -97,7 +99,9 @@ function LotsTable({
   const fmt = useFormat();
   const { money, signedMoney, nativeMoney } = useReportMoney(currency);
   const [tab, setTab] = useState<Tab>('waiting');
-  const positions = openLotsByTicker(groups[tab]);
+  const [search, setSearch] = useState('');
+  const positions = openLotsByTicker(groups[tab], search);
+  const nothingHeld = groups[tab].length === 0;
 
   const num = (value: string | number) => fmt.number(Number(value), { maximumFractionDigits: 6 });
   const signed = (value: number | null, strong: boolean) =>
@@ -118,32 +122,47 @@ function LotsTable({
 
   return (
     <>
-      <Segmented
-        value={tab}
-        onValueChange={setTab}
-        options={[
-          {
-            value: 'waiting',
-            label: t('upcoming.dialog.tabWaiting', { n: groups.waiting.length }),
-          },
-          { value: 'passed', label: t('upcoming.dialog.tabPassed', { n: groups.passed.length }) },
-        ]}
-        className="justify-self-start"
-      />
+      {/* Tabs on the left, search by ticker or name on the right, above the table */}
+      <div className="flex items-center justify-between gap-3">
+        <Segmented
+          value={tab}
+          onValueChange={setTab}
+          options={[
+            {
+              value: 'waiting',
+              label: t('upcoming.dialog.tabWaiting', { n: groups.waiting.length }),
+            },
+            { value: 'passed', label: t('upcoming.dialog.tabPassed', { n: groups.passed.length }) },
+          ]}
+        />
+        <InputWrap icon={<Search />} className="w-56 shrink">
+          <Input
+            className="h-[35px] text-table"
+            placeholder={t('table.search')}
+            aria-label={t('table.search')}
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        </InputWrap>
+      </div>
       {positions.length === 0 ? (
         <EmptyState
           bare
           className="py-8"
-          icon={<CalendarClock />}
+          icon={nothingHeld ? <CalendarClock /> : <Search />}
           title={t(
-            tab === 'waiting'
-              ? 'upcoming.dialog.emptyWaitingTitle'
-              : 'upcoming.dialog.emptyPassedTitle'
+            !nothingHeld
+              ? 'upcoming.dialog.emptySearchTitle'
+              : tab === 'waiting'
+                ? 'upcoming.dialog.emptyWaitingTitle'
+                : 'upcoming.dialog.emptyPassedTitle'
           )}
           description={t(
-            tab === 'waiting'
-              ? 'upcoming.dialog.emptyWaitingBody'
-              : 'upcoming.dialog.emptyPassedBody'
+            !nothingHeld
+              ? 'upcoming.dialog.emptySearchBody'
+              : tab === 'waiting'
+                ? 'upcoming.dialog.emptyWaitingBody'
+                : 'upcoming.dialog.emptyPassedBody'
           )}
         />
       ) : (

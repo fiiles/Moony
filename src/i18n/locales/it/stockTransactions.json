@@ -162,6 +162,8 @@
       "emptyWaitingBody": "Tutti gli acquisti che detieni hanno già superato il periodo di detenzione.",
       "emptyPassedTitle": "Ancora nulla superato",
       "emptyPassedBody": "Nessun acquisto che detieni ha ancora superato il periodo di detenzione.",
+      "emptySearchTitle": "Nessun risultato",
+      "emptySearchBody": "Nessun acquisto in portafoglio corrisponde alla ricerca.",
       "ofLot_one": "{{open}} di {{lot}} azione",
       "ofLot_many": "{{open}} di {{lot}} azioni",
       "ofLot_other": "{{open}} di {{lot}} azioni",

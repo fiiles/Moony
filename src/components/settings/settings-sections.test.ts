@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   SETTINGS_SECTIONS,
+  isLockedSection,
   resolveSettingsSection,
   visibleSettingsSections,
 } from './settings-sections';
@@ -84,5 +85,49 @@ describe('sync section', () => {
     expect(resolveSettingsSection('/settings/sync')).toBe('general');
     expect(resolveSettingsSection('/settings/sync', false)).toBe('general');
     expect(resolveSettingsSection('/settings/sync', true)).toBe('sync');
+  });
+});
+
+describe('the demo profile (ADR 0037)', () => {
+  it('lists Ukázka first, the open sections, then the locked ones, and no Account', () => {
+    const sections = visibleSettingsSections(true, true);
+    expect(sections.map((s) => s.id)).toEqual([
+      'demo',
+      'general',
+      'categorization',
+      'security',
+      'sync',
+      'data',
+      'integrations',
+    ]);
+    expect(sections.filter((s) => s.locked).map((s) => s.id)).toEqual([
+      'security',
+      'sync',
+      'data',
+      'integrations',
+    ]);
+  });
+
+  it('leaves Sync out while the feature is off', () => {
+    expect(visibleSettingsSections(false, true).map((s) => s.id)).not.toContain('sync');
+  });
+
+  it('lists Ukázka only in the demo', () => {
+    expect(visibleSettingsSections(true).map((s) => s.id)).not.toContain('demo');
+    expect(resolveSettingsSection('/settings/demo', true)).toBe('general');
+    expect(resolveSettingsSection('/settings/demo', true, true)).toBe('demo');
+  });
+
+  it('sends a link to Account back to General in the demo', () => {
+    expect(resolveSettingsSection('/settings/account', true, true)).toBe('general');
+    expect(resolveSettingsSection('/settings/account', true, false)).toBe('account');
+  });
+
+  it('resolves a locked section to itself, so its page can say why it is locked', () => {
+    expect(resolveSettingsSection('/settings/data', true, true)).toBe('data');
+    expect(isLockedSection('data', true)).toBe(true);
+    expect(isLockedSection('data', false)).toBe(false);
+    expect(isLockedSection('general', true)).toBe(false);
+    expect(isLockedSection('categorization', true)).toBe(false);
   });
 });

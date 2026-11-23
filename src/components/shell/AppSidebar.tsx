@@ -1,7 +1,16 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, Info, ListFilter, Lock, Settings } from 'lucide-react';
+import {
+  ChevronDown,
+  Info,
+  ListFilter,
+  Lock,
+  LogOut,
+  RotateCcw,
+  Settings,
+  UserPlus,
+} from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -12,6 +21,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { AboutModal } from '@/components/common/AboutModal';
+import { DemoAvatar, DemoBadge, DemoCard } from '@/components/common/DemoMark';
+import { ResetDemoDialog } from '@/components/demo/ResetDemoDialog';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/use-auth';
 import { MoonMark } from '@/components/common/MoonMark';
 import { cn } from '@/lib/utils';
@@ -32,6 +44,10 @@ import {
  * Group titles are eyebrows with a chevron on hover; state persists per
  * group and Tools starts collapsed. The middle scrolls; the account row stays
  * pinned above a hairline, and its menu holds Settings.
+ *
+ * In the demo profile (ADR 0037) a dashed card above the account row says the data is made up,
+ * the row reads "Ukázkový profil" with a dashed avatar, and the menu offers the way to an own
+ * profile, the reset and "Ukončit ukázku" instead of the lock.
  */
 function NavRow({
   item,
@@ -73,9 +89,11 @@ function NavRow({
 
 export function AppSidebar() {
   const [location] = useLocation();
-  const { user, lockMutation } = useAuth();
+  const { user, lockMutation, isDemo, closeDemoMutation } = useAuth();
   const { t } = useTranslation('common');
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
+  const leavingDemo = closeDemoMutation.isPending;
 
   // Open/closed state per group, remembered across reloads (groups never
   // toggled follow the default: everything open except Tools).
@@ -150,26 +168,63 @@ export function AppSidebar() {
       </nav>
 
       <div className="mt-[10px] border-t border-line-sidebar pt-[10px]">
+        {isDemo && (
+          <DemoCard className="mb-[10px] p-3" data-testid="demo-sidebar-card">
+            <DemoBadge className="mb-2" />
+            <p className="m-0 mb-2.5 text-caption font-500 leading-[1.45] text-ink-3">
+              {t('demo.sidebarText')}
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              disabled={leavingDemo}
+              onClick={() => closeDemoMutation.mutate('ownProfile')}
+            >
+              {t('demo.createProfile')}
+            </Button>
+          </DemoCard>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
               type="button"
               className="flex w-full items-center gap-[9px] rounded-r2 p-[10px] text-left transition-colors duration-fast hover:bg-ink-hover focus-visible:outline-none focus-visible:shadow-focus"
             >
-              <Avatar>
-                <AvatarFallback>{initials}</AvatarFallback>
-              </Avatar>
+              {isDemo ? (
+                <DemoAvatar initials={initials} />
+              ) : (
+                <Avatar>
+                  <AvatarFallback>{initials}</AvatarFallback>
+                </Avatar>
+              )}
               <span className="min-w-0">
                 <b className="block truncate text-table font-650 text-ink">
                   {user?.name} {user?.surname}
                 </b>
                 <small className="mt-0.5 block truncate text-micro font-500 text-ink-4">
-                  {t('nav.accountRow')}
+                  {isDemo ? t('demo.accountRow') : t('nav.accountRow')}
                 </small>
               </span>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent side="top" align="start" sideOffset={6} className="w-[232px]">
+            {isDemo && (
+              <>
+                <DropdownMenuItem
+                  onSelect={() => closeDemoMutation.mutate('ownProfile')}
+                  disabled={leavingDemo}
+                >
+                  <UserPlus />
+                  {t('demo.createProfile')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setResetOpen(true)}>
+                  <RotateCcw />
+                  {t('demo.reset.title')}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
             <DropdownMenuItem asChild>
               <Link href="/settings/categorization-rules">
                 <ListFilter />
@@ -177,7 +232,7 @@ export function AppSidebar() {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/settings">
+              <Link href={isDemo ? '/settings/demo' : '/settings'}>
                 <Settings />
                 {t('nav.settings')}
               </Link>
@@ -187,18 +242,30 @@ export function AppSidebar() {
               {t('about.title')}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onSelect={() => lockMutation.mutate()}
-              disabled={lockMutation.isPending}
-            >
-              <Lock />
-              {t('nav.lockApp')}
-            </DropdownMenuItem>
+            {isDemo ? (
+              // The demo has no password: it ends instead of locking (the choice screen follows)
+              <DropdownMenuItem
+                onSelect={() => closeDemoMutation.mutate('choice')}
+                disabled={leavingDemo}
+              >
+                <LogOut />
+                {t('demo.exit')}
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem
+                onSelect={() => lockMutation.mutate()}
+                disabled={lockMutation.isPending}
+              >
+                <Lock />
+                {t('nav.lockApp')}
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
       <AboutModal open={aboutOpen} onOpenChange={setAboutOpen} />
+      {isDemo && <ResetDemoDialog open={resetOpen} onOpenChange={setResetOpen} />}
     </aside>
   );
 }

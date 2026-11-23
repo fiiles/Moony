@@ -146,5 +146,14 @@
       "valuation": "omvärdering av {{name}}",
       "firstValuation": "första värdering av {{name}}"
     }
+  },
+  "demoWelcome": {
+    "title": "Välkommen till exemplet",
+    "text": "Alex Meyer finns inte. Han har tre konton, aktier och krypto, en lägenhet med bolån och fyra års historik. Ändra, lägg till eller ta bort vad du vill – exemplet kan när som helst återställas till ursprungligt skick.",
+    "links": {
+      "cashflow": "Vart pengarna tar vägen",
+      "stocks": "Hur aktierna går",
+      "projection": "Vad tjugo år ger"
+    }
   }
 }

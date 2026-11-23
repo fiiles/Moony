@@ -688,5 +688,23 @@
   "filterBadge": {
     "label": "Filter: {{labels}}",
     "clear": "Clear filter"
+  },
+  "demo": {
+    "badge": "Sample",
+    "sidebarText": "You're looking at made-up data. When you want to start with your own finances:",
+    "createProfile": "Create your own profile",
+    "accountRow": "Sample profile",
+    "exit": "Leave the sample",
+    "topBadge": "Sample data",
+    "popoverTitle": "You're viewing sample data",
+    "popoverText": "Alex Meyer is made up. Whatever you change here stays in the sample and does not carry over to your profile.",
+    "reset": {
+      "title": "Restore the original data",
+      "lead": "The sample goes back to how it was when you first opened it.",
+      "noticeTitle": "Your changes in the sample will be lost",
+      "noticeText": "Everything you added, edited or deleted in the sample is undone. Your own profile is not affected.",
+      "confirm": "Restore the original data",
+      "done": "The sample is back to its original state"
+    }
   }
 }

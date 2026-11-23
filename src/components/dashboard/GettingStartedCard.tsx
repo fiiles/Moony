@@ -44,7 +44,7 @@ const ICONS: Record<GettingStartedKey, LucideIcon> = {
 export function GettingStartedCard({ className }: { className?: string }) {
   const { t } = useTranslation('dashboard');
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, isDemo } = useAuth();
   const featureOn = useDeviceSyncFeature();
   const { data: syncStatus } = useDeviceSyncStatus();
   const { data: progress } = useQuery({
@@ -53,7 +53,8 @@ export function GettingStartedCard({ className }: { className?: string }) {
     staleTime: 60_000,
   });
 
-  if (!progress || progress.checklistDismissed) return null;
+  // The demo's generator dismisses the checklist; its backup and sync items need a real profile
+  if (isDemo || !progress || progress.checklistDismissed) return null;
 
   const sync = { featureOn, syncOn: syncIsOn(featureOn, syncStatus) };
   const items = gettingStartedItems(progress, user?.menuPreferences, sync);

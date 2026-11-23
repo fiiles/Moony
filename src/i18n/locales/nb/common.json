@@ -688,5 +688,23 @@
   "filterBadge": {
     "label": "Filter: {{labels}}",
     "clear": "Fjern filter"
+  },
+  "demo": {
+    "badge": "Eksempel",
+    "sidebarText": "Du ser på oppdiktede data. Når du vil begynne med din egen økonomi:",
+    "createProfile": "Opprett din egen profil",
+    "accountRow": "Eksempelprofil",
+    "exit": "Avslutt eksempelet",
+    "topBadge": "Eksempeldata",
+    "popoverTitle": "Du ser på eksempeldata",
+    "popoverText": "Alex Meyer er oppdiktet. Det du endrer her, blir værende i eksempelet og overføres ikke til profilen din.",
+    "reset": {
+      "title": "Gjenopprett de opprinnelige dataene",
+      "lead": "Eksempelet går tilbake til slik det var da du åpnet det første gang.",
+      "noticeTitle": "Endringene dine i eksempelet går tapt",
+      "noticeText": "Alt du har lagt til, endret eller slettet i eksempelet, tilbakestilles. Din egen profil berøres ikke.",
+      "confirm": "Gjenopprett de opprinnelige dataene",
+      "done": "Eksempelet er tilbake i opprinnelig tilstand"
+    }
   }
 }

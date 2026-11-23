@@ -16,8 +16,11 @@
       "integrations": "Lokalny serwer MCP dla asystentów AI.",
       "sync": "Utrzymuje zgodność Twoich urządzeń, z szyfrowaniem end-to-end.",
       "categorization": "Pakiety reguł, kategorie i twoje własne reguły kategoryzacji.",
-      "account": "Usuwanie twoich danych z tego komputera."
-    }
+      "account": "Usuwanie twoich danych z tego komputera.",
+      "demo": "Co możesz zrobić z danymi przykładowymi i jak przejść do własnego profilu.",
+      "lockedInDemo": "Niedostępne w przykładzie."
+    },
+    "demo": "Przykład"
   },
   "profile": {
     "title": "Profil",
@@ -280,6 +283,23 @@
     "kit": {
       "title": "Zestaw odzyskiwania synchronizacji",
       "text": "Przywraca zsynchronizowane dane, gdy stracisz wszystkie urządzenia. Jeden dla wszystkich urządzeń."
+    }
+  },
+  "demo": {
+    "title": "Dane przykładowe",
+    "sub": "Zmyślony profil Alexa Meyera",
+    "subToday": "Zmyślony profil Alexa Meyera · otwarty dziś o {{time}}",
+    "subYesterday": "Zmyślony profil Alexa Meyera · otwarty wczoraj o {{time}}",
+    "subOn": "Zmyślony profil Alexa Meyera · otwarty {{date}}",
+    "createHint": "Kreator przeprowadzi Cię przez hasło, klucz odzyskiwania i pierwsze konto. Dane przykładowe nie przejdą do profilu.",
+    "resetHint": "Przywraca przykład do stanu z chwili pierwszego otwarcia. Twoje zmiany w przykładzie znikną.",
+    "exitHint": "Wraca do ekranu startowego. Zmiany w przykładzie zostają i następnym razem możesz kontynuować.",
+    "locked": {
+      "title": "{{section}} – we własnym profilu",
+      "security": "Przykład nie ma hasła ani blokady. Hasło, automatyczną blokadę i odblokowanie odciskiem palca ustawisz we własnym profilu.",
+      "data": "Przykład nie wymaga kopii zapasowych, w każdej chwili przywrócisz go do stanu początkowego. Kopie zapasowe i przywracanie należą do własnego profilu.",
+      "sync": "Zmyślone dane nie są synchronizowane między urządzeniami. Synchronizację włączysz we własnym profilu.",
+      "integrations": "Lokalny serwer MCP jest w przykładzie wyłączony, aby asystent nie traktował zmyślonych liczb jak Twoich."
     }
   }
 }

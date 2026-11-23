@@ -698,5 +698,23 @@
   "filterBadge": {
     "label": "Filtr: {{labels}}",
     "clear": "Wyczyść filtr"
+  },
+  "demo": {
+    "badge": "Przykład",
+    "sidebarText": "Przeglądasz zmyślone dane. Gdy zechcesz zacząć z własnymi finansami:",
+    "createProfile": "Utwórz własny profil",
+    "accountRow": "Profil przykładowy",
+    "exit": "Zakończ przykład",
+    "topBadge": "Dane przykładowe",
+    "popoverTitle": "Przeglądasz dane przykładowe",
+    "popoverText": "Alex Meyer jest zmyślony. To, co tu zmienisz, zostaje w przykładzie i nie przechodzi do Twojego profilu.",
+    "reset": {
+      "title": "Przywróć oryginalne dane",
+      "lead": "Przykład wróci do stanu z chwili pierwszego otwarcia.",
+      "noticeTitle": "Twoje zmiany w przykładzie znikną",
+      "noticeText": "Wszystko, co w przykładzie dodano, zmieniono lub usunięto, zostanie cofnięte. Twojego własnego profilu to nie dotyczy.",
+      "confirm": "Przywróć oryginalne dane",
+      "done": "Przykład wrócił do stanu początkowego"
+    }
   }
 }

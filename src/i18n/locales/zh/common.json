@@ -683,5 +683,23 @@
   "filterBadge": {
     "label": "筛选：{{labels}}",
     "clear": "清除筛选"
+  },
+  "demo": {
+    "badge": "示例",
+    "sidebarText": "您正在查看虚构数据。想开始管理自己的财务时：",
+    "createProfile": "创建自己的档案",
+    "accountRow": "示例档案",
+    "exit": "退出示例",
+    "topBadge": "示例数据",
+    "popoverTitle": "您正在查看示例数据",
+    "popoverText": "Alex Meyer 是虚构的。您在这里所做的更改只保留在示例中，不会转入您的档案。",
+    "reset": {
+      "title": "恢复原始数据",
+      "lead": "示例将回到您第一次打开时的状态。",
+      "noticeTitle": "您在示例中的更改将会丢失",
+      "noticeText": "您在示例中添加、编辑或删除的所有内容都会被撤销。您自己的档案不受影响。",
+      "confirm": "恢复原始数据",
+      "done": "示例已恢复到原始状态"
+    }
   }
 }

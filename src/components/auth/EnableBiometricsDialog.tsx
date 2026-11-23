@@ -39,7 +39,7 @@ function storage(): Storage | null {
  */
 export function EnableBiometricsDialog() {
   const { t } = useTranslation('auth');
-  const { appStatus, unlockMutation, lockMutation } = useAuth();
+  const { appStatus, unlockMutation, lockMutation, isDemo } = useAuth();
   const { promptOpen: updatePromptOpen } = useUpdater();
   // The removed-device notice opens once at unlock too (`RemovedNoticeDialog`): the offer waits
   // until it was answered, and while the status that says so is still loading.
@@ -52,7 +52,9 @@ export function EnableBiometricsDialog() {
 
   // Unlocked with the password since the last lock: a newer unlock submission than the last lock.
   // Setup and recovery unlock through their own mutations, biometrics through another.
+  // Never in the demo profile, which has no password and refuses biometric unlock (ADR 0037).
   const passwordUnlocked =
+    !isDemo &&
     appStatus === 'unlocked' &&
     unlockMutation.isSuccess &&
     unlockMutation.submittedAt > lockMutation.submittedAt;

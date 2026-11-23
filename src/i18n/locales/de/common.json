@@ -688,5 +688,23 @@
   "filterBadge": {
     "label": "Filter: {{labels}}",
     "clear": "Filter aufheben"
+  },
+  "demo": {
+    "badge": "Beispiel",
+    "sidebarText": "Sie sehen erfundene Daten. Wenn Sie mit Ihren eigenen Finanzen beginnen möchten:",
+    "createProfile": "Eigenes Profil anlegen",
+    "accountRow": "Beispielprofil",
+    "exit": "Beispiel beenden",
+    "topBadge": "Beispieldaten",
+    "popoverTitle": "Sie sehen Beispieldaten",
+    "popoverText": "Alex Meyer ist erfunden. Was Sie hier ändern, bleibt im Beispiel und wird nicht in Ihr Profil übernommen.",
+    "reset": {
+      "title": "Ursprüngliche Daten wiederherstellen",
+      "lead": "Das Beispiel kehrt in den Zustand zurück, in dem Sie es zum ersten Mal geöffnet haben.",
+      "noticeTitle": "Ihre Änderungen im Beispiel gehen verloren",
+      "noticeText": "Alles, was Sie im Beispiel hinzugefügt, bearbeitet oder gelöscht haben, wird zurückgesetzt. Ihr eigenes Profil ist davon nicht betroffen.",
+      "confirm": "Ursprüngliche Daten wiederherstellen",
+      "done": "Das Beispiel ist wieder im ursprünglichen Zustand"
+    }
   }
 }

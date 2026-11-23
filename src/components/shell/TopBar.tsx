@@ -8,6 +8,8 @@ import { DataStatus } from '@/components/shell/DataStatus';
 import { UpdateStatus } from '@/components/shell/UpdateStatus';
 import { useDeviceSyncFeature } from '@/hooks/use-device-sync';
 import { MilestonesStatus } from '@/components/shell/MilestonesStatus';
+import { DemoTopBarBadge } from '@/components/demo/DemoTopBarBadge';
+import { useAuth } from '@/hooks/use-auth';
 import { useShell } from '@/components/shell/shell-context';
 import { breadcrumbTag } from '@/utils/breadcrumb-tag';
 
@@ -22,7 +24,7 @@ interface Crumb {
  * Top bar (design system §5): breadcrumb left; right, what asks for the person (deadlines, an
  * update), a rule, then the one "Stav dat" indicator; 40 px below. List pages read
  * "Peníze / bankovní účty", details "Investice / Akcie / Běžný účet", settings
- * "Nastavení / obecné".
+ * "Nastavení / obecné". In the demo profile "Ukázková data" stands first (ADR 0037).
  */
 export function TopBar() {
   const [location] = useLocation();
@@ -31,6 +33,7 @@ export function TopBar() {
   const { getLocale } = useLanguage();
   const { page } = useShell();
   const syncFeature = useDeviceSyncFeature();
+  const { isDemo } = useAuth();
   const lower = (s: string) => breadcrumbTag(s, getLocale());
 
   const nav = findNavLocation(location);
@@ -45,7 +48,7 @@ export function TopBar() {
     if (page.crumb) crumbs.push({ label: page.crumb, kind: 'strong' });
     else
       crumbs.push({
-        label: lower(ts(`sections.${resolveSettingsSection(location, syncFeature)}`)),
+        label: lower(ts(`sections.${resolveSettingsSection(location, syncFeature, isDemo)}`)),
         kind: 'tag',
       });
   } else if (nav.isDetail && page.crumb) {
@@ -86,8 +89,9 @@ export function TopBar() {
         ))}
       </nav>
       <div className="flex shrink-0 items-center gap-4">
-        {/* What asks for the person (deadlines, an update), then a rule, then "Stav dat". */}
+        {/* What asks for the person (the demo, deadlines, an update), then a rule, then "Stav dat". */}
         <div className="peer flex items-center gap-4 empty:hidden">
+          <DemoTopBarBadge />
           {nav?.item.id !== 'overview' && <MilestonesStatus />}
           <UpdateStatus />
         </div>

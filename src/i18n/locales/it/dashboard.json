@@ -147,5 +147,14 @@
       "valuation": "rivalutazione di {{name}}",
       "firstValuation": "prima stima di {{name}}"
     }
+  },
+  "demoWelcome": {
+    "title": "Benvenuto nell'esempio",
+    "text": "Alex Meyer non esiste. Ha tre conti, azioni e cripto, un appartamento con mutuo e quattro anni di storico. Modifica, aggiungi o elimina quello che vuoi: puoi riportare l'esempio allo stato originale in qualsiasi momento.",
+    "links": {
+      "cashflow": "Dove finiscono i soldi",
+      "stocks": "Come vanno le azioni",
+      "projection": "Cosa succederà tra vent'anni"
+    }
   }
 }

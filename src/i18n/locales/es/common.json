@@ -693,5 +693,23 @@
   "filterBadge": {
     "label": "Filtro: {{labels}}",
     "clear": "Quitar filtro"
+  },
+  "demo": {
+    "badge": "Ejemplo",
+    "sidebarText": "Estás viendo datos inventados. Cuando quieras empezar con tus propias finanzas:",
+    "createProfile": "Crear tu propio perfil",
+    "accountRow": "Perfil de ejemplo",
+    "exit": "Salir del ejemplo",
+    "topBadge": "Datos de ejemplo",
+    "popoverTitle": "Estás viendo datos de ejemplo",
+    "popoverText": "Alex Meyer es inventado. Lo que cambies aquí se queda en el ejemplo y no pasa a tu perfil.",
+    "reset": {
+      "title": "Restaurar los datos originales",
+      "lead": "El ejemplo vuelve al estado en que lo abriste por primera vez.",
+      "noticeTitle": "Se perderán tus cambios en el ejemplo",
+      "noticeText": "Todo lo que hayas añadido, editado o borrado en el ejemplo se deshace. Tu propio perfil no se ve afectado.",
+      "confirm": "Restaurar los datos originales",
+      "done": "El ejemplo ha vuelto a su estado original"
+    }
   }
 }

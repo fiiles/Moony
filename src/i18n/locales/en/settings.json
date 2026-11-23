@@ -16,8 +16,11 @@
       "integrations": "The local MCP server for AI assistants.",
       "sync": "Keeping your devices in step, end-to-end encrypted.",
       "categorization": "Rule packs, categories and your own categorization rules.",
-      "account": "Deleting your data from this computer."
-    }
+      "account": "Deleting your data from this computer.",
+      "demo": "What you can do with the sample data and how to move on to your own profile.",
+      "lockedInDemo": "Not available in the sample."
+    },
+    "demo": "Sample"
   },
   "profile": {
     "title": "Profile",
@@ -272,6 +275,23 @@
     "kit": {
       "title": "Sync Recovery Kit",
       "text": "Brings your synced data back when every device is lost. One for all your devices."
+    }
+  },
+  "demo": {
+    "title": "Sample data",
+    "sub": "Alex Meyer's fictional profile",
+    "subToday": "Alex Meyer's fictional profile · opened today at {{time}}",
+    "subYesterday": "Alex Meyer's fictional profile · opened yesterday at {{time}}",
+    "subOn": "Alex Meyer's fictional profile · opened {{date}}",
+    "createHint": "The guide takes you through a password, a recovery key and your first account. Sample data does not carry over to the profile.",
+    "resetHint": "Returns the sample to how it was when you first opened it. Your changes in the sample will be lost.",
+    "exitHint": "Takes you back to the start screen. Your changes in the sample stay, and you can continue next time.",
+    "locked": {
+      "title": "{{section}} comes with your own profile",
+      "security": "The sample has no password and no lock. You set up a password, auto-lock and fingerprint unlock in your own profile.",
+      "data": "The sample needs no backups – you can return it to its original state at any time. Backups and restoring belong to your own profile.",
+      "sync": "Made-up data is not synced between devices. You turn on sync in your own profile.",
+      "integrations": "The local MCP server is off in the sample, so that an assistant never treats made-up numbers as yours."
     }
   }
 }

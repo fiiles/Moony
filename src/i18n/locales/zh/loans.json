@@ -123,9 +123,9 @@
   "actions": {
     "edit": "编辑",
     "delete": "删除贷款",
-    "open": "打开",
     "extraPayment": "额外还款",
     "balanceCheck": "输入某日期的余额",
+    "recordBalance": "记录余额",
     "rateChange": "记录利率变更"
   },
   "confirmDelete": {

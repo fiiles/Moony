@@ -10,7 +10,6 @@
   "actions": {
     "newPlan": "Ny plan",
     "takeOver": "Ta över planer från {{year}}",
-    "open": "Öppna",
     "edit": "Redigera",
     "close": "Stäng plan",
     "reopen": "Öppna plan igen",

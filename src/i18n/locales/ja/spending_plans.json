@@ -10,7 +10,6 @@
   "actions": {
     "newPlan": "新しいプラン",
     "takeOver": "{{year}}年のプランを引き継ぐ",
-    "open": "開く",
     "edit": "編集",
     "close": "プランを終了",
     "reopen": "プランを再開",

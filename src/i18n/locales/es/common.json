@@ -69,7 +69,8 @@
   },
   "actions": {
     "cancel": "Cancelar",
-    "add": "Añadir"
+    "add": "Añadir",
+    "showDetail": "Ver detalle"
   },
   "labels": {
     "name": "Nombre",

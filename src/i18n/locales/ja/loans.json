@@ -123,9 +123,9 @@
   "actions": {
     "edit": "編集",
     "delete": "ローンを削除",
-    "open": "開く",
     "extraPayment": "追加返済",
     "balanceCheck": "日付を指定して残高を入力",
+    "recordBalance": "残高を記録",
     "rateChange": "金利の変更を記録"
   },
   "confirmDelete": {

@@ -3,7 +3,16 @@ import { Link } from 'wouter';
 import type { StockTag } from '@shared/schema';
 import { matchesSearch } from '@/utils/holdings-search';
 import { useTranslation } from 'react-i18next';
-import { Ellipsis, Pencil, Search, ShoppingCart, Trash2, TrendingDown, Tag } from 'lucide-react';
+import {
+  Ellipsis,
+  Eye,
+  Pencil,
+  Search,
+  ShoppingCart,
+  Trash2,
+  TrendingDown,
+  Tag,
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
@@ -88,6 +97,7 @@ export function InvestmentsTable({
     [convert, currency]
   );
   const { t } = useTranslation('stocks');
+  const { t: tc } = useTranslation('common');
   const [search, setSearch] = useState('');
   const [showZero, setShowZero] = useState(false);
   const [sortColumn, setSortColumn] = useState<SortColumn>('marketValue');
@@ -354,6 +364,10 @@ export function InvestmentsTable({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem onSelect={() => onViewDetail(h)}>
+                            <Eye />
+                            {tc('actions.showDetail')}
+                          </DropdownMenuItem>
                           <DropdownMenuItem onSelect={() => onBuy(h)}>
                             <ShoppingCart />
                             {t('actions.buy')}

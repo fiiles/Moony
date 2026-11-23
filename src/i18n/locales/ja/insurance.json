@@ -122,7 +122,6 @@
     "notes": "メモ"
   },
   "actions": {
-    "open": "開く",
     "edit": "編集",
     "end": "契約を終了",
     "reactivate": "契約を再開",

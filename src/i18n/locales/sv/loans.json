@@ -130,9 +130,9 @@
   "actions": {
     "edit": "Redigera",
     "delete": "Ta bort lån",
-    "open": "Öppna",
     "extraPayment": "Extra betalning",
     "balanceCheck": "Ange saldot per ett datum",
+    "recordBalance": "Registrera saldo",
     "rateChange": "Registrera en ränteändring"
   },
   "confirmDelete": {

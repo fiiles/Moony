@@ -10,7 +10,6 @@
   "actions": {
     "newPlan": "新建计划",
     "takeOver": "沿用 {{year}} 年的计划",
-    "open": "打开",
     "edit": "编辑",
     "close": "关闭计划",
     "reopen": "重新打开计划",

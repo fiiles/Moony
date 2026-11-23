@@ -10,7 +10,6 @@
   "actions": {
     "newPlan": "Nový plán",
     "takeOver": "Převzít plány z roku {{year}}",
-    "open": "Otevřít",
     "edit": "Upravit",
     "close": "Uzavřít plán",
     "reopen": "Obnovit plán",

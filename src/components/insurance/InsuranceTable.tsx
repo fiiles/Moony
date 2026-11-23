@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'wouter';
-import { Ellipsis, ExternalLink, ListFilter, Lock, LockOpen, Pencil, Trash2 } from 'lucide-react';
+import { Ellipsis, Eye, ListFilter, Lock, LockOpen, Pencil, Trash2 } from 'lucide-react';
 import { recordCurrency } from '@shared/currencies';
 import type { InsuranceRow } from '@/utils/insurance';
 import { compareConverted } from '@/utils/fx-totals';
@@ -434,8 +434,8 @@ export function InsuranceTable({
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onSelect={() => setLocation(`/insurance/${p.id}`)}>
-                            <ExternalLink />
-                            {t('actions.open')}
+                            <Eye />
+                            {tc('actions.showDetail')}
                           </DropdownMenuItem>
                           <DropdownMenuItem onSelect={() => onEdit(r)}>
                             <Pencil />

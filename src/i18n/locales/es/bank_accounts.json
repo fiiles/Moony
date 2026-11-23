@@ -621,7 +621,6 @@
     "recordBalance": "Registrar saldo"
   },
   "menu": {
-    "showDetail": "Ver detalle",
     "balanceHistory": "Historial de saldo",
     "interest": "Intereses"
   },

@@ -10,7 +10,6 @@
   "actions": {
     "newPlan": "New plan",
     "takeOver": "Take over plans from {{year}}",
-    "open": "Open",
     "edit": "Edit",
     "close": "Close plan",
     "reopen": "Reopen plan",

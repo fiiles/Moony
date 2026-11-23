@@ -137,9 +137,9 @@
   "actions": {
     "edit": "Modifica",
     "delete": "Elimina prestito",
-    "open": "Apri",
     "extraPayment": "Versamento extra",
     "balanceCheck": "Inserisci il saldo a una data",
+    "recordBalance": "Registra saldo",
     "rateChange": "Registra una variazione di tasso"
   },
   "confirmDelete": {

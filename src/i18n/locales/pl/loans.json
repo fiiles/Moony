@@ -144,9 +144,9 @@
   "actions": {
     "edit": "Edytuj",
     "delete": "Usuń kredyt",
-    "open": "Otwórz",
     "extraPayment": "Nadpłata",
     "balanceCheck": "Wpisz saldo na dzień",
+    "recordBalance": "Zapisz saldo",
     "rateChange": "Zapisz zmianę oprocentowania"
   },
   "confirmDelete": {

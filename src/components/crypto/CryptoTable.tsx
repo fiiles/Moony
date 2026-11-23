@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Ellipsis, Pencil, Search, ShoppingCart, Trash2, TrendingDown } from 'lucide-react';
+import { Ellipsis, Eye, Pencil, Search, ShoppingCart, Trash2, TrendingDown } from 'lucide-react';
 import { priceDecimals } from '@shared/currencies';
 import { matchesSearch } from '@/utils/holdings-search';
 import { compareKnown, costPerUnit, type CryptoRow } from '@/utils/positions';
@@ -87,6 +87,7 @@ export function CryptoTable({
     [convert, currency]
   );
   const { t } = useTranslation('crypto');
+  const { t: tc } = useTranslation('common');
   const [search, setSearch] = useState('');
   const [showClosed, setShowClosed] = useState(false);
   const [sortColumn, setSortColumn] = useState<SortColumn>('marketValue');
@@ -335,6 +336,10 @@ export function CryptoTable({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem onSelect={() => onViewDetail(h)}>
+                            <Eye />
+                            {tc('actions.showDetail')}
+                          </DropdownMenuItem>
                           <DropdownMenuItem onSelect={() => onBuy(h)}>
                             <ShoppingCart />
                             {t('actions.buy')}

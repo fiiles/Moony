@@ -1,7 +1,8 @@
 import { Separator } from '@/components/ui/separator';
 
 interface FormSectionProps {
-  title: string;
+  /** Omitted when the dialog title already names the section */
+  title?: string;
   children: React.ReactNode;
   /** Pass true for the first section — omits the leading separator */
   first?: boolean;
@@ -12,7 +13,7 @@ export function FormSection({ title, children, first = false }: FormSectionProps
   return (
     <div className="space-y-4">
       {!first && <Separator />}
-      <h3 className="text-h3 text-ink">{title}</h3>
+      {title && <h3 className="text-h3 text-ink">{title}</h3>}
       {children}
     </div>
   );

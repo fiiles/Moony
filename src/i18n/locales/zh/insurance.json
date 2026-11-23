@@ -122,7 +122,6 @@
     "notes": "备注"
   },
   "actions": {
-    "open": "打开",
     "edit": "编辑",
     "end": "终止保单",
     "reactivate": "重新启用保单",

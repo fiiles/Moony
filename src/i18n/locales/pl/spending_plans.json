@@ -10,7 +10,6 @@
   "actions": {
     "newPlan": "Nowy plan",
     "takeOver": "Przejmij plany z {{year}}",
-    "open": "Otwórz",
     "edit": "Edytuj",
     "close": "Zamknij plan",
     "reopen": "Otwórz ponownie",

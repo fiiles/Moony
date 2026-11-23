@@ -129,7 +129,6 @@
     "notes": "Notes"
   },
   "actions": {
-    "open": "Open",
     "edit": "Edit",
     "end": "End policy",
     "reactivate": "Reactivate policy",

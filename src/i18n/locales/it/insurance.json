@@ -136,7 +136,6 @@
     "notes": "Note"
   },
   "actions": {
-    "open": "Apri",
     "edit": "Modifica",
     "end": "Termina polizza",
     "reactivate": "Riattiva polizza",

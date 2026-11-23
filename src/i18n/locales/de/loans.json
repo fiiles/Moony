@@ -130,9 +130,9 @@
   "actions": {
     "edit": "Bearbeiten",
     "delete": "Kredit löschen",
-    "open": "Öffnen",
     "extraPayment": "Sonderzahlung",
     "balanceCheck": "Restschuld zu einem Datum eingeben",
+    "recordBalance": "Saldo erfassen",
     "rateChange": "Zinsänderung erfassen"
   },
   "confirmDelete": {

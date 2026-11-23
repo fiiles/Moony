@@ -250,7 +250,6 @@
     "view": "View Details",
     "edit": "Edit",
     "delete": "Delete",
-    "open": "Open",
     "revalue": "Revalue"
   },
   "confirmDelete": {

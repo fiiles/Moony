@@ -506,7 +506,7 @@ export default function BankAccounts() {
                                   onSelect={() => setLocation(`/bank-accounts/${account.id}`)}
                                 >
                                   <Eye />
-                                  {t('menu.showDetail')}
+                                  {tc('actions.showDetail')}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onSelect={() => setEditing(account)}>
                                   <Pencil />

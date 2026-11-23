@@ -21,7 +21,7 @@ import { useCurrency } from '@/lib/currency';
 import { DebtTrajectoryCard } from '@/components/loans/DebtTrajectoryCard';
 import { LoansTable } from '@/components/loans/LoansTable';
 
-type Modal = 'add' | 'edit' | 'delete' | null;
+type Modal = 'add' | 'edit' | 'recordBalance' | 'delete' | null;
 
 /**
  * Loans (design system §7 List, prototype loans.html): how much I owe and when
@@ -111,7 +111,13 @@ export default function Loans() {
           />
           <LoansSummary metrics={metrics} today={today} />
           <DebtTrajectoryCard rows={rows} metrics={metrics} today={today} convert={convert} />
-          <LoansTable rows={rows} today={today} onEdit={open('edit')} onDelete={open('delete')} />
+          <LoansTable
+            rows={rows}
+            today={today}
+            onEdit={open('edit')}
+            onRecordBalance={open('recordBalance')}
+            onDelete={open('delete')}
+          />
         </>
       )}
 
@@ -127,6 +133,14 @@ export default function Loans() {
         onSubmit={handleEditSubmit}
         loan={selected}
         isLoading={updateMutation.isPending}
+      />
+      <LoanFormDialog
+        open={modal === 'recordBalance'}
+        onOpenChange={closeIf}
+        onSubmit={handleEditSubmit}
+        loan={selected}
+        isLoading={updateMutation.isPending}
+        mode="recordBalance"
       />
       <ConfirmDeleteDialog
         open={modal === 'delete'}

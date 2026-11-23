@@ -69,7 +69,8 @@
   },
   "actions": {
     "cancel": "Avbryt",
-    "add": "Lägg till"
+    "add": "Lägg till",
+    "showDetail": "Visa detaljer"
   },
   "labels": {
     "name": "Namn",

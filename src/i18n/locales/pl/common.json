@@ -69,7 +69,8 @@
   },
   "actions": {
     "cancel": "Anuluj",
-    "add": "Dodaj"
+    "add": "Dodaj",
+    "showDetail": "Pokaż szczegóły"
   },
   "labels": {
     "name": "Nazwa",

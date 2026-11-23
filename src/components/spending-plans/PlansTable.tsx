@@ -1,15 +1,6 @@
 import { useMemo, useState, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  ArrowUpRight,
-  Ellipsis,
-  ExternalLink,
-  Lock,
-  Pencil,
-  RotateCcw,
-  Search,
-  Trash2,
-} from 'lucide-react';
+import { ArrowUpRight, Ellipsis, Eye, Lock, Pencil, RotateCcw, Search, Trash2 } from 'lucide-react';
 import type { SpendingPlan } from '@shared/schema';
 import {
   NEAR_THRESHOLD,
@@ -313,8 +304,8 @@ export function PlansTable({
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onSelect={() => onOpen(plan)}>
-                              <ExternalLink />
-                              {t('actions.open')}
+                              <Eye />
+                              {tc('actions.showDetail')}
                             </DropdownMenuItem>
                             <DropdownMenuItem onSelect={() => onEdit(plan)}>
                               <Pencil />

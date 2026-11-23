@@ -130,9 +130,9 @@
   "actions": {
     "edit": "Edit",
     "delete": "Delete loan",
-    "open": "Open",
     "extraPayment": "Extra payment",
     "balanceCheck": "Enter balance as of a date",
+    "recordBalance": "Record balance",
     "rateChange": "Record a rate change"
   },
   "confirmDelete": {

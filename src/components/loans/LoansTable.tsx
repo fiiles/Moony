@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'wouter';
-import { Ellipsis, ExternalLink, Pencil, Trash2 } from 'lucide-react';
+import { Ellipsis, Eye, Pencil, Trash2, Wallet } from 'lucide-react';
 import type { Loan } from '@shared/schema';
 import { recordCurrency } from '@shared/currencies';
 import type { LoanRow } from '@/utils/loans';
@@ -42,6 +42,7 @@ interface LoansTableProps {
   rows: LoanRow[];
   today: number;
   onEdit: (loan: Loan) => void;
+  onRecordBalance: (loan: Loan) => void;
   onDelete: (loan: Loan) => void;
 }
 
@@ -50,8 +51,9 @@ interface LoansTableProps {
  * rate with its fixation, payment, and the payoff month from the schedule with
  * "do roka" / "do 18 měsíců" badges; paid-off loans sit behind a toggle.
  */
-export function LoansTable({ rows, today, onEdit, onDelete }: LoansTableProps) {
+export function LoansTable({ rows, today, onEdit, onRecordBalance, onDelete }: LoansTableProps) {
   const { t } = useTranslation('loans');
+  const { t: tc } = useTranslation('common');
   const { currencyCode } = useCurrency();
   const fmt = useFormat();
   const money = (value: number) => fmt.money(value, currencyCode, { decimals: 0 });
@@ -314,12 +316,16 @@ export function LoansTable({ rows, today, onEdit, onDelete }: LoansTableProps) {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onSelect={() => setLocation(`/loans/${loan.id}`)}>
-                            <ExternalLink />
-                            {t('actions.open')}
+                            <Eye />
+                            {tc('actions.showDetail')}
                           </DropdownMenuItem>
                           <DropdownMenuItem onSelect={() => onEdit(loan)}>
                             <Pencil />
                             {t('actions.edit')}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => onRecordBalance(loan)}>
+                            <Wallet />
+                            {t('actions.recordBalance')}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem variant="danger" onSelect={() => onDelete(loan)}>

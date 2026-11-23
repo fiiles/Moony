@@ -48,6 +48,11 @@ interface LoanFormDialogProps {
   onSubmit: (data: InsertLoan | (Partial<Loan> & { id: string })) => void;
   loan?: Loan | null;
   isLoading?: boolean;
+  /**
+   * `recordBalance` shows only the balance section of an existing loan, with the
+   * balance switched on as of today ("Zaznamenat zůstatek" from the loans table).
+   */
+  mode?: 'full' | 'recordBalance';
 }
 
 /** The shared schema plus the UI-only switch "set the balance as of a date". */
@@ -110,7 +115,9 @@ export function LoanFormDialog({
   onSubmit,
   loan,
   isLoading,
+  mode = 'full',
 }: LoanFormDialogProps) {
+  const recordOnly = mode === 'recordBalance' && !!loan;
   const { t } = useTranslation('loans');
   const { t: tc } = useTranslation('common');
   const { currencyCode: userCurrency } = useCurrency();
@@ -147,10 +154,29 @@ export function LoanFormDialog({
           : undefined,
         manualBalance: typeof loan.balanceAnchorAmount === 'string',
       } as DefaultValues<LoanFormValues>);
+      if (recordOnly) {
+        // A new record as of today, starting from today's balance so the user only corrects it
+        const today = todayUtcDay();
+        const current = loanBalanceAt(
+          {
+            terms: {
+              principal: Number(loan.principal),
+              annualRatePct: Number(loan.interestRate) || 0,
+              monthlyPayment: Number(loan.monthlyPayment) || 0,
+              startDay: dayFloor(loan.startDate ?? today),
+            },
+            events: loan.events.map(ledgerEventFromWire),
+          },
+          today
+        );
+        form.setValue('manualBalance', true);
+        form.setValue('balanceAnchorAmount', current.balance.toFixed(2));
+        form.setValue('balanceAnchorDate', new Date(today * 1000));
+      }
     } else {
       form.reset(emptyDefaults(userCurrency));
     }
-  }, [loan, form, open, userCurrency]);
+  }, [loan, form, open, userCurrency, recordOnly]);
 
   // The loan's manual balance records as stored (the form can replace or delete them)
   const storedManualCount = loan?.events.filter((e) => e.kind === 'balance_check').length ?? 0;
@@ -287,105 +313,122 @@ export function LoanFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{loan ? t('form.editTitle') : t('form.addTitle')}</DialogTitle>
+          <DialogTitle>
+            {recordOnly
+              ? t('actions.recordBalance')
+              : loan
+                ? t('form.editTitle')
+                : t('form.addTitle')}
+          </DialogTitle>
           <DialogDescription>
-            {loan ? t('modal.editDescription') : t('modal.addDescription')}
+            {recordOnly
+              ? loan?.name
+              : loan
+                ? t('modal.editDescription')
+                : t('modal.addDescription')}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form id="loan-form" onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('form.name')}</FormLabel>
-                  <FormControl>
-                    <Input placeholder={t('form.namePlaceholder')} autoFocus {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-[1fr_138px] gap-3">
-              <FormField
-                control={form.control}
-                name="principal"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('form.originalAmount')}</FormLabel>
-                    <InputWrap unit={currency}>
+            {!recordOnly && (
+              <>
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('form.name')}</FormLabel>
                       <FormControl>
-                        <Input type="number" step="0.01" min="0" placeholder="0" {...field} />
+                        <Input placeholder={t('form.namePlaceholder')} autoFocus {...field} />
                       </FormControl>
-                    </InputWrap>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="currency"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{tc('labels.currency')}</FormLabel>
-                    <FormControl>
-                      <CurrencyCombobox value={field.value} onChange={field.onChange} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-            <div className="grid grid-cols-2 gap-3">
-              <FormField
-                control={form.control}
-                name="interestRate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('form.interestRate')}</FormLabel>
-                    <InputWrap unit="%">
-                      <FormControl>
-                        <Input type="number" step="0.01" min="0" placeholder="0" {...field} />
-                      </FormControl>
-                    </InputWrap>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="monthlyPayment"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('form.monthlyPayment')}</FormLabel>
-                    <InputWrap unit={currency}>
-                      <FormControl>
-                        <Input type="number" step="0.01" min="0" placeholder="0" {...field} />
-                      </FormControl>
-                    </InputWrap>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                <div className="grid grid-cols-[1fr_138px] gap-3">
+                  <FormField
+                    control={form.control}
+                    name="principal"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('form.originalAmount')}</FormLabel>
+                        <InputWrap unit={currency}>
+                          <FormControl>
+                            <Input type="number" step="0.01" min="0" placeholder="0" {...field} />
+                          </FormControl>
+                        </InputWrap>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="currency"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{tc('labels.currency')}</FormLabel>
+                        <FormControl>
+                          <CurrencyCombobox value={field.value} onChange={field.onChange} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              {dateField('startDate', t('form.startDate'), t('modal.startDateHelp'))}
-              {dateField('endDate', t('form.endDate'), t('modal.endDateHelp'), true)}
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {dateField(
-                'interestRateValidityDate',
-                t('modal.rateValidity'),
-                t('modal.rateValidityHelp'),
-                true
-              )}
-            </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField
+                    control={form.control}
+                    name="interestRate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('form.interestRate')}</FormLabel>
+                        <InputWrap unit="%">
+                          <FormControl>
+                            <Input type="number" step="0.01" min="0" placeholder="0" {...field} />
+                          </FormControl>
+                        </InputWrap>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="monthlyPayment"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('form.monthlyPayment')}</FormLabel>
+                        <InputWrap unit={currency}>
+                          <FormControl>
+                            <Input type="number" step="0.01" min="0" placeholder="0" {...field} />
+                          </FormControl>
+                        </InputWrap>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
-            <FormSection title={t('form.balance.title')}>
+                <div className="grid grid-cols-2 gap-3">
+                  {dateField('startDate', t('form.startDate'), t('modal.startDateHelp'))}
+                  {dateField('endDate', t('form.endDate'), t('modal.endDateHelp'), true)}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {dateField(
+                    'interestRateValidityDate',
+                    t('modal.rateValidity'),
+                    t('modal.rateValidityHelp'),
+                    true
+                  )}
+                </div>
+              </>
+            )}
+
+            <FormSection
+              title={recordOnly ? undefined : t('form.balance.title')}
+              first={recordOnly}
+            >
               <p className="text-caption text-ink-3">{t('form.balance.help')}</p>
               {estimate && (
                 <div className="rounded-r3 bg-well px-4 py-3 text-table">
@@ -399,14 +442,16 @@ export function LoanFormDialog({
                   )}
                 </div>
               )}
-              <div className="flex items-center justify-between">
-                <Label htmlFor="manualBalance">{t('form.balance.setManual')}</Label>
-                <Switch
-                  id="manualBalance"
-                  checked={manualBalance}
-                  onCheckedChange={handleManualBalanceChange}
-                />
-              </div>
+              {!recordOnly && (
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="manualBalance">{t('form.balance.setManual')}</Label>
+                  <Switch
+                    id="manualBalance"
+                    checked={manualBalance}
+                    onCheckedChange={handleManualBalanceChange}
+                  />
+                </div>
+              )}
               {!manualBalance && storedManualCount > 0 && (
                 <Alert>
                   <TriangleAlert aria-hidden />
@@ -450,7 +495,13 @@ export function LoanFormDialog({
             {tc('buttons.cancel')}
           </Button>
           <Button type="submit" form="loan-form" disabled={isLoading} loading={isLoading}>
-            {isLoading ? tc('status.saving') : loan ? tc('buttons.saveChanges') : t('form.submit')}
+            {isLoading
+              ? tc('status.saving')
+              : recordOnly
+                ? tc('buttons.save')
+                : loan
+                  ? tc('buttons.saveChanges')
+                  : t('form.submit')}
           </Button>
         </DialogFooter>
       </DialogContent>

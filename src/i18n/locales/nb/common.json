@@ -69,7 +69,8 @@
   },
   "actions": {
     "cancel": "Avbryt",
-    "add": "Legg til"
+    "add": "Legg til",
+    "showDetail": "Vis detaljer"
   },
   "labels": {
     "name": "Navn",

@@ -138,9 +138,9 @@
   "actions": {
     "edit": "Upravit",
     "delete": "Smazat úvěr",
-    "open": "Otevřít",
     "extraPayment": "Mimořádná splátka",
     "balanceCheck": "Zadat zůstatek k datu",
+    "recordBalance": "Zaznamenat zůstatek",
     "rateChange": "Zapsat změnu sazby"
   },
   "confirmDelete": {

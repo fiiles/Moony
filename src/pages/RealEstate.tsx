@@ -9,7 +9,7 @@ import {
 } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { ArrowUp, Ellipsis, ExternalLink, House, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { ArrowUp, Ellipsis, Eye, House, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import type { Loan, RealEstate } from '@shared/schema';
 import { recordCurrency } from '@shared/currencies';
 import { exportApi, portfolioApi, realEstateApi } from '@/lib/tauri-api';
@@ -627,8 +627,8 @@ export default function RealEstatePage() {
                                 <DropdownMenuItem
                                   onSelect={() => setLocation(`/real-estate/${p.id}`)}
                                 >
-                                  <ExternalLink />
-                                  {t('actions.open')}
+                                  <Eye />
+                                  {tc('actions.showDetail')}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onSelect={() => openModal('edit', p)}>
                                   <Pencil />

@@ -69,7 +69,8 @@
   },
   "actions": {
     "cancel": "キャンセル",
-    "add": "追加"
+    "add": "追加",
+    "showDetail": "詳細を表示"
   },
   "labels": {
     "name": "名",

@@ -69,7 +69,8 @@
   },
   "actions": {
     "cancel": "Zrušit",
-    "add": "Přidat"
+    "add": "Přidat",
+    "showDetail": "Zobrazit detail"
   },
   "labels": {
     "name": "Jméno",

@@ -136,7 +136,6 @@
     "notes": "Notas"
   },
   "actions": {
-    "open": "Abrir",
     "edit": "Editar",
     "end": "Finalizar póliza",
     "reactivate": "Reactivar póliza",

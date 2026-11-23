@@ -13,6 +13,7 @@ export const PRICE_DEPENDENT_KEYS = [
   'crypto',
   'stocks-analysis',
   'stock-performance',
+  'stock-transactions-report',
   'projection',
   'portfolio-metrics',
   'portfolio-history',

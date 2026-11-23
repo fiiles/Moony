@@ -21,6 +21,7 @@ export const STOCK_TRANSACTION_KEYS = [
   ['dividend-summary'],
   ['stocks-analysis'],
   ['stock-performance'],
+  ['stock-transactions-report'],
   ['stock-splits'],
 ] as const;
 

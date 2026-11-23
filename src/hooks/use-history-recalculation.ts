@@ -23,6 +23,7 @@ export function useHistoryRecalculation(): readonly string[] {
         queryClient.invalidateQueries({ queryKey: ['portfolio-history'] });
         queryClient.invalidateQueries({ queryKey: ['ticker-history'] });
         queryClient.invalidateQueries({ queryKey: ['stock-performance'] });
+        queryClient.invalidateQueries({ queryKey: ['stock-transactions-report'] });
       }
     });
 

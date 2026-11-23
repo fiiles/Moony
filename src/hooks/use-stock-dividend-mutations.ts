@@ -17,6 +17,7 @@ const STOCK_DIVIDEND_KEYS = [
   ['investment-transactions'],
   ['stocks-analysis'],
   ['stock-performance'],
+  ['stock-transactions-report'],
 ] as const;
 
 /**

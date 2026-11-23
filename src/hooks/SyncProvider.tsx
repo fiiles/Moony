@@ -158,6 +158,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         ['dividend-summary'],
         ['stocks-analysis'],
         ['stock-performance'],
+        ['stock-transactions-report'],
         ['stock-import-batches'],
         ['stock-monitor'],
       ],

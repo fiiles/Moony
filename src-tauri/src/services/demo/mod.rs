@@ -5,9 +5,12 @@
 //! options always produce the same data. Spec: `docs/specs/2026-11-23-demo-profile-design.md`,
 //! plan: `docs/plans/2026-11-23-demo-profile-data.md`.
 
+pub mod bank;
 pub mod clock;
+pub mod planning;
 pub mod prices;
 pub mod rng;
+pub mod schedule;
 pub mod text;
 
 use crate::error::Result;
@@ -43,35 +46,283 @@ pub struct DemoSummary {
     pub net_worth_eur: f64,
 }
 
-/// Fill a migrated database with the demo data set, in one SQL transaction.
+/// Fill a migrated database with the demo data set.
+///
+/// There is no outer transaction: the bank, budget and plan services open their own
+/// (SQLite cannot nest them), so each part batches what it can and commits itself.
 pub fn seed(conn: &Connection, opts: &DemoOptions) -> Result<DemoSummary> {
-    let _ = opts;
-    let tx = conn.unchecked_transaction()?;
-    let summary = DemoSummary::default();
+    let mut summary = DemoSummary::default();
 
-    // Task 2: bank::seed(&tx, opts, &mut summary)?;      accounts, payments, balance records
-    // Task 2: planning::seed(&tx, opts, &mut summary)?;  budgets, spending plans, cashflow items
-    // Task 3: invest::seed(&tx, opts, &mut summary)?;    stocks, crypto, bond, watchlist
-    // Task 3: assets::seed(&tx, opts, &mut summary)?;    property, loans, insurance, other assets
-    // Task 4: history::seed(&tx, opts, &mut summary)?;   rates, daily values, markers
+    bank::seed(conn, opts, &mut summary)?; // accounts, payments, balance records
+    planning::seed(conn, opts, &mut summary)?; // budgets, spending plans, cashflow items
+                                               // Task 3: invest::seed(conn, opts, &mut summary)?;    stocks, crypto, bond, watchlist
+                                               // Task 3: assets::seed(conn, opts, &mut summary)?;    property, loans, insurance, other assets
+                                               // Task 4: history::seed(conn, opts, &mut summary)?;   rates, daily values, markers
 
-    tx.commit()?;
     Ok(summary)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::{NaiveDate, TimeZone, Utc};
+
+    fn now_2026() -> i64 {
+        Utc.with_ymd_and_hms(2026, 11, 23, 12, 0, 0)
+            .single()
+            .expect("date")
+            .timestamp()
+    }
+
+    fn db() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        conn.execute_batch("PRAGMA foreign_keys = ON;")
+            .expect("pragma");
+        crate::db::run_migrations(&conn).expect("migrations");
+        conn
+    }
+
+    fn opts(language: &str, now: i64) -> DemoOptions {
+        DemoOptions {
+            language: language.into(),
+            now,
+            attachments: false,
+        }
+    }
+
+    fn seeded(language: &str, now: i64) -> (Connection, DemoSummary) {
+        let conn = db();
+        let summary = seed(&conn, &opts(language, now)).expect("seed");
+        (conn, summary)
+    }
+
+    fn count(conn: &Connection, sql: &str) -> i64 {
+        conn.query_row(sql, [], |r| r.get(0)).expect("count")
+    }
+
+    /// (name, currency, end balance) per account, ordered by name for stable comparison.
+    fn end_balances(conn: &Connection) -> Vec<(String, String, f64)> {
+        let mut stmt = conn
+            .prepare("SELECT name, currency, balance FROM bank_accounts ORDER BY currency, name")
+            .expect("prepare");
+        stmt.query_map([], |r| {
+            Ok((
+                r.get::<_, String>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, String>(2)?.parse::<f64>().unwrap_or(f64::NAN),
+            ))
+        })
+        .expect("query")
+        .collect::<std::result::Result<Vec<_>, _>>()
+        .expect("rows")
+    }
+
+    fn balance_of(conn: &Connection, currency: &str, savings: bool) -> f64 {
+        let kind = if savings { "savings" } else { "checking" };
+        conn.query_row(
+            "SELECT CAST(balance AS REAL) FROM bank_accounts WHERE currency = ?1 AND account_type = ?2",
+            [currency, kind],
+            |r| r.get(0),
+        )
+        .expect("balance")
+    }
+
+    fn check_invariants(conn: &Connection, now: i64) {
+        // no balance record below zero
+        assert_eq!(
+            count(
+                conn,
+                "SELECT COUNT(*) FROM bank_balance_records WHERE CAST(amount AS REAL) < 0"
+            ),
+            0
+        );
+        // every payment has a category
+        assert_eq!(
+            count(
+                conn,
+                "SELECT COUNT(*) FROM bank_transactions WHERE category_id IS NULL"
+            ),
+            0
+        );
+        // salary in each of the 48 months
+        let salary_months = count(
+            conn,
+            "SELECT COUNT(DISTINCT strftime('%Y-%m', booking_date, 'unixepoch'))
+             FROM bank_transactions WHERE category_id = 'cat_income' AND tx_type = 'credit'
+               AND description = (SELECT description FROM bank_transactions
+                                  WHERE category_id = 'cat_income' ORDER BY booking_date LIMIT 1)",
+        );
+        let today = clock::date_of(clock::today(now));
+        // the salary of the current month only exists once the 25th has passed
+        let expected = if chrono::Datelike::day(&today) >= 25 {
+            49
+        } else {
+            48
+        };
+        assert_eq!(salary_months, expected);
+        let payments = count(conn, "SELECT COUNT(*) FROM bank_transactions");
+        assert!((1_800..=2_800).contains(&payments), "payments {payments}");
+        // every account stays non-negative on every day: replay the payments
+        let mut stmt = conn
+            .prepare(
+                "SELECT bank_account_id, tx_type, CAST(amount AS REAL) FROM bank_transactions
+                 ORDER BY booking_date, rowid",
+            )
+            .expect("prepare");
+        let mut bal = std::collections::HashMap::<String, f64>::new();
+        // opening balance = first month-end record minus the payments up to that day
+        for (id, first_as_of, amount) in {
+            let mut q = conn
+                .prepare(
+                    "SELECT r.bank_account_id, r.as_of, CAST(r.amount AS REAL) FROM bank_balance_records r
+                     WHERE r.as_of = (SELECT MIN(as_of) FROM bank_balance_records
+                                      WHERE bank_account_id = r.bank_account_id)",
+                )
+                .expect("prepare");
+            q.query_map([], |r| {
+                Ok((
+                    r.get::<_, String>(0)?,
+                    r.get::<_, i64>(1)?,
+                    r.get::<_, f64>(2)?,
+                ))
+            })
+            .expect("query")
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .expect("rows")
+        } {
+            let net: f64 = conn
+                .query_row(
+                    "SELECT COALESCE(SUM(CASE tx_type WHEN 'credit' THEN 1 ELSE -1 END
+                                        * CAST(amount AS REAL)), 0)
+                     FROM bank_transactions WHERE bank_account_id = ?1 AND booking_date <= ?2",
+                    rusqlite::params![id, first_as_of],
+                    |r| r.get(0),
+                )
+                .expect("net");
+            bal.insert(id, amount - net);
+        }
+        let rows = stmt
+            .query_map([], |r| {
+                Ok((
+                    r.get::<_, String>(0)?,
+                    r.get::<_, String>(1)?,
+                    r.get::<_, f64>(2)?,
+                ))
+            })
+            .expect("query");
+        for row in rows {
+            let (id, kind, amount) = row.expect("row");
+            let b = bal.entry(id).or_insert(0.0);
+            *b += if kind == "credit" { amount } else { -amount };
+            assert!(*b > -0.005, "negative balance {b}");
+        }
+    }
 
     #[test]
-    fn seed_on_an_empty_plan_runs() {
-        let conn = Connection::open_in_memory().expect("in-memory db");
-        let opts = DemoOptions {
-            language: "en".into(),
-            now: 1_795_000_000,
-            attachments: false,
+    fn bank_history_matches_the_target_state() {
+        let started = std::time::Instant::now();
+        let (conn, summary) = seeded("en", now_2026());
+        let elapsed = started.elapsed();
+        let payments = count(&conn, "SELECT COUNT(*) FROM bank_transactions");
+        let (cur, sav, trv) = (
+            balance_of(&conn, "EUR", false),
+            balance_of(&conn, "EUR", true),
+            balance_of(&conn, "USD", false),
+        );
+        eprintln!(
+            "payments {payments}, current {cur}, savings {sav}, travel {trv}, seed {elapsed:?}"
+        );
+        eprintln!("{:?}", summary.counts);
+        check_invariants(&conn, now_2026());
+        assert!((2_500.0..=5_500.0).contains(&cur), "current {cur}");
+        assert!((9_000.0..=16_000.0).contains(&sav), "savings {sav}");
+        assert!((1_000.0..=1_400.0).contains(&trv), "travel {trv}");
+    }
+
+    #[test]
+    fn budgets_have_two_versions_per_category() {
+        let (conn, _) = seeded("en", now_2026());
+        let rows = count(
+            &conn,
+            "SELECT COUNT(*) FROM (SELECT category_id FROM budget_goal_versions
+             GROUP BY category_id HAVING COUNT(*) = 2)",
+        );
+        assert_eq!(rows, 5);
+        assert_eq!(
+            count(&conn, "SELECT COUNT(*) FROM budget_goal_versions"),
+            10
+        );
+    }
+
+    #[test]
+    fn open_plans_have_tagged_payments_and_last_year_is_closed() {
+        let (conn, _) = seeded("en", now_2026());
+        // Christmas has no payments before December, so it may be empty
+        for name in ["Holiday", "Car"] {
+            let tagged = count(
+                &conn,
+                &format!(
+                    "SELECT COUNT(*) FROM bank_transactions b JOIN spending_plans p
+                     ON p.id = b.spending_plan_id WHERE p.name = '{name}' AND p.year = 2026"
+                ),
+            );
+            assert!(tagged >= 1, "{name} has no tagged payment");
+        }
+        assert_eq!(count(&conn, "SELECT COUNT(*) FROM spending_plans"), 4);
+        let closed: i64 = conn
+            .query_row(
+                "SELECT closed_at FROM spending_plans WHERE year = 2025",
+                [],
+                |r| r.get(0),
+            )
+            .expect("closed");
+        assert_eq!(
+            closed,
+            clock::day_of(NaiveDate::from_ymd_opt(2025, 12, 31).expect("date"))
+        );
+        assert_eq!(count(&conn, "SELECT COUNT(*) FROM cashflow_items"), 3);
+    }
+
+    #[test]
+    fn same_now_gives_identical_data() {
+        let (a, _) = seeded("en", now_2026());
+        let (b, _) = seeded("en", now_2026());
+        assert_eq!(
+            count(&a, "SELECT COUNT(*) FROM bank_transactions"),
+            count(&b, "SELECT COUNT(*) FROM bank_transactions")
+        );
+        assert_eq!(end_balances(&a), end_balances(&b));
+        let sum = |c: &Connection| -> f64 {
+            c.query_row(
+                "SELECT SUM(CAST(amount AS REAL)) FROM bank_transactions",
+                [],
+                |r| r.get(0),
+            )
+            .expect("sum")
         };
-        let summary = seed(&conn, &opts).expect("seed");
-        assert!(summary.counts.is_empty());
+        assert_eq!(sum(&a).to_bits(), sum(&b).to_bits());
+    }
+
+    #[test]
+    fn an_earlier_now_also_passes_the_invariants() {
+        // balance records are validated against the wall clock, so shift into the past
+        let now = now_2026() - 200 * 86_400;
+        let (conn, _) = seeded("en", now);
+        check_invariants(&conn, now);
+        assert!(balance_of(&conn, "EUR", true) > 0.0);
+    }
+
+    #[test]
+    fn czech_run_writes_czech_names() {
+        let (conn, _) = seeded("cs", now_2026());
+        let names: Vec<String> = end_balances(&conn).into_iter().map(|(n, _, _)| n).collect();
+        assert!(names.contains(&"Běžný účet".to_string()), "{names:?}");
+        assert_eq!(
+            count(
+                &conn,
+                "SELECT COUNT(*) FROM spending_plans WHERE name = 'Dovolená'"
+            ),
+            2
+        );
     }
 }

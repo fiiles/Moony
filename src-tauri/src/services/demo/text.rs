@@ -145,6 +145,18 @@ texts! {
     CryptoPurchase => ["Crypto purchase", "Nákup kryptoměn", "Krypto-Kauf", "Compra de criptomonedas", "Acquisto di criptovalute", "Kjøp av krypto", "Zakup kryptowalut", "Kryptoköp", "暗号資産の購入", "购买加密货币"];
     /// Top-up of the USD travel account.
     TravelTopUp => ["Travel account top-up", "Dobití cestovního účtu", "Aufladung Reisekonto", "Recarga de la cuenta de viajes", "Ricarica del conto viaggi", "Påfyll reisekonto", "Zasilenie konta podróżnego", "Insättning på resekontot", "旅行用口座へ入金", "旅行账户充值"];
+    /// Transfer out of the savings account (top-up of the current account).
+    TransferFromSavings => ["Transfer from savings", "Převod ze spoření", "Überweisung vom Sparkonto", "Transferencia desde el ahorro", "Trasferimento dal risparmio", "Overføring fra sparing", "Przelew z oszczędności", "Överföring från sparande", "貯蓄口座から振替", "从储蓄转出"];
+    /// Savings withdrawal for the car.
+    CarPurchase => ["Car purchase", "Koupě auta", "Autokauf", "Compra del coche", "Acquisto dell'auto", "Bilkjøp", "Zakup samochodu", "Bilköp", "車の購入", "购买汽车"];
+    /// Savings withdrawal for the parking space.
+    ParkingPurchase => ["Parking space purchase", "Koupě parkovacího stání", "Kauf Stellplatz", "Compra de la plaza de garaje", "Acquisto del posto auto", "Kjøp av parkeringsplass", "Zakup miejsca parkingowego", "Köp av parkeringsplats", "駐車場の購入", "购买车位"];
+    /// Savings withdrawal for the gold coins.
+    GoldPurchase => ["Gold coins purchase", "Nákup zlatých mincí", "Kauf von Goldmünzen", "Compra de monedas de oro", "Acquisto di monete d'oro", "Kjøp av gullmynter", "Zakup złotych monet", "Köp av guldmynt", "金貨の購入", "购买金币"];
+    /// Proceeds of a partial crypto sale paid to the current account.
+    CryptoSale => ["Crypto sale", "Prodej kryptoměn", "Krypto-Verkauf", "Venta de criptomonedas", "Vendita di criptovalute", "Salg av krypto", "Sprzedaż kryptowalut", "Kryptoförsäljning", "暗号資産の売却", "出售加密货币"];
+    /// Museum tickets on a trip.
+    MuseumTickets => ["Museum tickets", "Vstupenky do muzea", "Museumstickets", "Entradas de museo", "Biglietti del museo", "Museumsbilletter", "Bilety do muzeum", "Museibiljetter", "美術館のチケット", "博物馆门票"];
     /// Appliances for the new kitchen.
     KitchenAppliances => ["Kitchen appliances", "Kuchyňské spotřebiče", "Küchengeräte", "Electrodomésticos de cocina", "Elettrodomestici da cucina", "Kjøkkenapparater", "Sprzęt AGD do kuchni", "Köksapparater", "キッチン家電", "厨房电器"];
     /// Name of the flat (owner-occupied property).

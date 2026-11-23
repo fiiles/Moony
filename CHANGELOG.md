@@ -6,6 +6,31 @@ All notable changes to Moony are documented in this file. The format follows
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-11-23
+
+### Added
+
+- **Stock transactions report.** A new page lists every sale in a period with its result, the
+  cost basis worked out by FIFO or by average cost, and an optional holding-time test that marks
+  lots held long enough. It shows the open lots, activity charts and totals reconciled to the
+  minor unit, and exports to CSV. It is a record of your own trades; it does not name a country
+  or give tax advice.
+- **A demo profile on first run.** The first screen lets you start your own profile or try a demo
+  one, a made-up household (Alex Meyer, EUR) with years of history built on real historical
+  prices, dividends and rates. The demo lives in its own data folder, is marked in the top bar,
+  and your own data is never touched. Settings and the profile menu tell you when you are in it.
+- **Instrument logos and category chips in Recent movements.** Trades show the stock's logo and
+  payments show their category.
+
+### Changed
+
+- **Row menus have one "Show detail" item**, and loans can record a balance from their menu.
+- **Settings opens from the profile menu only.**
+
+### Security
+
+- `cookie` 0.18.3 (RUSTSEC-2026-0594: private cookie nonces could repeat in forked processes).
+
 ## [1.4.1] - 2026-11-22
 
 ### Added
@@ -899,7 +924,8 @@ local tool). Everything below is new to the public.
 - The updater only offers versions higher than the installed one, so a machine running an
   older 1.x build from the previous private repository must install 0.9.0 by hand.
 
-[Unreleased]: https://github.com/fiiles/Moony/compare/v1.4.1...HEAD
+[Unreleased]: https://github.com/fiiles/Moony/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/fiiles/Moony/compare/v1.4.1...v1.5.0
 [1.4.1]: https://github.com/fiiles/Moony/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/fiiles/Moony/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/fiiles/Moony/compare/v1.2.0...v1.3.0

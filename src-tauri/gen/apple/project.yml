@@ -58,7 +58,7 @@ targets:
         # there are no iPad orientations.
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
-        CFBundleShortVersionString: 1.4.1
+        CFBundleShortVersionString: 1.5.0
         # The build number, not the version: "1" in every local build (tauri.ios.conf.json,
         # bundle.iOS.bundleVersion); scripts/ios-store-build.sh gives each App Store Connect upload
         # its own rising number. See docs/playbooks/release-ios.md.

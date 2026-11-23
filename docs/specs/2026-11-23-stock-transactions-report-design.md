@@ -21,6 +21,7 @@ His rulings on the prototype (in chat, 2026-11-23):
 5. "Všechny transakce" lists dividends too.
 6. "Blíží se časový test" shows the nearest lots and opens a modal with every one of them.
 7. "Exportovat CSV" belongs to the "Všechny transakce" table, not to the page head.
+8. (During the build.) The page names no country, Czechia included, in tooltips or anywhere else.
 
 ## 1. Problem
 
@@ -162,11 +163,12 @@ With the test off there are no classes anywhere on the page: one summary row, a 
 instead of "Časový test", no class filter, no D12 card.
 
 An info button beside the switch opens an explanatory tooltip (a wide, wrapping variant of `.tip`,
-shown on hover and focus, pinned by a click, closed by Esc): what the test is, that Czechia uses
-three years, that other countries use another length or none, that it should be on only when it
-applies to the user, how to enter another length, that Moony computes no tax and that an exempt
-loss does not lower the taxable result. Examples of other countries appear only if verified from a
-primary source before release; otherwise the sentence names no country but Czechia.
+shown on hover and focus, pinned by a click, closed by Esc): what the test is, that the length
+differs by country and some countries have no such rule, that it should be on only when it applies
+to the user, how to enter another length, that Moony computes no tax and that an exempt loss does
+not lower the taxable result. **No country is named anywhere on the page** (owner, 2026-11-23,
+during the build): not in this tooltip, not in the cost-method or currency tooltips, in no
+language. The three-year preset is preselected as a plain default without attribution.
 
 **D8. Summary table** "Příjmy, nabývací cena a výsledek", columns: Příjmy z prodeje, Nabývací cena,
 Výsledek, Poplatky, Výsledek po poplatcích. Rows with the test on: **Podléhá dani** (pieces held at
@@ -304,7 +306,7 @@ Frontend: tests for the filter-and-total utilities. Components and hooks are out
 4. The modal's "Už prošlo" tab.
 5. A sale that sells more than was bought, or cannot be converted, stays out of the sums with a
    note (D15, D16).
-6. Country examples in the tooltip only when verified (D7).
+6. (Superseded by ruling 8: no country is named at all.)
 7. No MCP tool for the report.
 
 ## 8. Left to the builder

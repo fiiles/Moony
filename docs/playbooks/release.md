@@ -70,6 +70,8 @@ Then, by hand:
       Artifacts land in `src-tauri/target/release/bundle/`.
 - [ ] Migrations added since the last release were tried against a copy of a database written
       by that release (`docs/playbooks/add-db-migration.md`).
+- [ ] Refresh the built-in demo prices: `cd src-tauri && cargo test --lib refresh_demo_prices
+      -- --ignored` (network), then commit `src/services/demo/prices_data.rs`.
 
 ## Version bump
 

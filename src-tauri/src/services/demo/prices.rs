@@ -345,18 +345,17 @@ const PAYERS: &[Payer] = &[
     },
 ];
 
-/// Last year dividend events are generated for.
-const DIVIDENDS_THROUGH: i32 = 2032;
-
 /// Per-share dividend events `(ex-day at UTC midnight, amount in the stock's currency,
-/// today's units)` for the demo payers, oldest first; empty for other tickers. Ex-days that
-/// fall on a weekend move to the Friday before.
-pub fn dividends(ticker: &str) -> Vec<(i64, f64)> {
+/// today's units)` for the demo payers, oldest first, for every year from the payer's first
+/// through the year of `until` (the caller filters the days it needs); empty for other
+/// tickers. Ex-days that fall on a weekend move to the Friday before.
+pub fn dividends(ticker: &str, until: i64) -> Vec<(i64, f64)> {
     let Some(p) = PAYERS.iter().find(|p| p.ticker == ticker) else {
         return Vec::new();
     };
     let mut out = Vec::new();
-    for year in p.first_year..=DIVIDENDS_THROUGH {
+    let last_year = super::clock::date_of(until).year();
+    for year in p.first_year..=last_year {
         let idx = (year - p.first_year) as usize;
         let amount = match p.per_payment.get(idx) {
             Some(a) => *a,
@@ -455,17 +454,34 @@ mod tests {
     }
 
     #[test]
+    fn every_series_has_a_value_back_to_2019() {
+        // the earliest day a seed needs is 12 days before M60 (late 2020 for a `now` in late
+        // 2025); before the first anchor the series holds its first value
+        for day in [ts(2019, 1, 1), ts(2020, 6, 15), ts(2020, 12, 30)] {
+            for t in tickers() {
+                assert!(price_on(t, day).is_some_and(|(p, _)| p > 0.0), "{t}");
+            }
+            assert!(usd_per_eur(day) > 0.5 && dkk_per_eur(day) > 5.0);
+        }
+    }
+
+    #[test]
     fn dividends_cover_the_payers_in_order() {
         for t in ["MSFT", "AAPL", "NVDA", "ASML.AS", "ALV.DE"] {
-            let ev = dividends(t);
+            let ev = dividends(t, ts(2032, 12, 31));
             assert!(ev.len() >= 7, "{t}");
             assert!(ev.windows(2).all(|w| w[0].0 < w[1].0), "{t} ordered");
             assert!(ev
                 .iter()
                 .all(|(d, a)| *a > 0.0 && (d.div_euclid(DAY) + 3).rem_euclid(7) < 5));
         }
-        assert_eq!(dividends("MSFT").len(), 4 * 12);
-        assert_eq!(dividends("ALV.DE").len(), 12);
-        assert!(dividends("PYPL").is_empty());
+        let end_2032 = ts(2032, 12, 31);
+        assert_eq!(dividends("MSFT", end_2032).len(), 4 * 12);
+        assert_eq!(dividends("ALV.DE", end_2032).len(), 12);
+        assert!(dividends("PYPL", end_2032).is_empty());
+        // no fixed horizon: any later year has its events
+        let in_2040 = dividends("MSFT", ts(2040, 6, 30));
+        assert_eq!(in_2040.len(), 4 * 20);
+        assert!(in_2040.last().is_some_and(|(d, _)| *d > ts(2040, 11, 1)));
     }
 }

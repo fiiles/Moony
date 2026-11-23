@@ -18,7 +18,7 @@ use crate::error::Result;
 use crate::models::bank_accounts::{InsertBalanceRecord, InsertBankAccount};
 use crate::models::bank_transactions::{FlowKind, InsertBankTransaction};
 use crate::services::bank_accounts;
-use chrono::{Datelike, NaiveDate};
+use chrono::Datelike;
 
 /// Opening balance of the current account on the first simulated day.
 pub const OPEN_CURRENT_EUR: f64 = 2_900.0;
@@ -150,11 +150,6 @@ impl Gen {
     }
 }
 
-fn ymd(y: i32, m: u32, d: u32) -> i64 {
-    let date = NaiveDate::from_ymd_opt(y, m, d.min(clock::days_in_month(y, m))).unwrap_or_default();
-    clock::day_of(date)
-}
-
 fn heating_base(month: u32) -> f64 {
     match month {
         12 | 1 | 2 => 115.0,
@@ -168,6 +163,8 @@ fn heating_base(month: u32) -> f64 {
 /// Generate every scheduled payment (everything except interest, sweeps and rescues).
 fn generate(opts: &DemoOptions, names: [String; 3]) -> Vec<Pay> {
     let now = opts.now;
+    let lang = opts.language.as_str();
+    let car_from = car_bought_day(now);
     let today = clock::today(now);
     let start = clock::months_ago(now, HISTORY_MONTHS, 1);
     let mut g = Gen {
@@ -204,7 +201,13 @@ fn generate(opts: &DemoOptions, names: [String; 3]) -> Vec<Pay> {
         }
         if month == 5 {
             let a = g.amt(380.0, 620.0);
-            g.credit(d(14), a, T::TaxRefund, "Tax Office", "cat_other_income");
+            g.credit(
+                d(14),
+                a,
+                T::TaxRefund,
+                t(lang, T::TaxOffice),
+                "cat_other_income",
+            );
         }
         if m < PARKING_BOUGHT_M {
             g.credit(
@@ -237,7 +240,7 @@ fn generate(opts: &DemoOptions, names: [String; 3]) -> Vec<Pay> {
             d(10),
             c(185.0),
             T::BuildingFee,
-            "Building Association",
+            t(lang, T::OwnersAssociation),
             "cat_housing",
         );
         let a = g.amt(58.0, 64.0);
@@ -266,39 +269,45 @@ fn generate(opts: &DemoOptions, names: [String; 3]) -> Vec<Pay> {
             d(1),
             c(49.0),
             T::TransitPass,
-            "City Transit",
+            t(lang, T::PublicTransport),
             "cat_transport",
         );
         g.debit(
-            d(21),
+            d(LIFE_DAY),
             c(31.50),
             T::PremLife,
             "Aurora Insurance",
             "cat_insurance",
         );
         match month {
-            2 => g.debit(
-                d(12),
+            m if m == HOME_PREMIUM.0 => g.debit(
+                d(HOME_PREMIUM.1),
                 c(168.0),
                 T::PremHome,
                 "Aurora Insurance",
                 "cat_insurance",
             ),
-            3 => g.debit(
-                d(14),
+            m if m == LIABILITY_PREMIUM.0 => g.debit(
+                d(LIABILITY_PREMIUM.1),
                 c(62.0),
                 T::PremLiability,
                 "Aurora Insurance",
                 "cat_insurance",
             ),
-            6 => g.debit(
-                d(3),
+            m if m == TRAVEL_PREMIUM.0 => g.debit(
+                d(TRAVEL_PREMIUM.1),
                 c(54.0),
                 T::PremTravel,
                 "Aurora Insurance",
                 "cat_insurance",
             ),
-            5 => g.debit(d(20), c(96.0), T::PropertyTax, "City Hall", "cat_taxes"),
+            5 => g.debit(
+                d(20),
+                c(96.0),
+                T::PropertyTax,
+                t(lang, T::Municipality),
+                "cat_taxes",
+            ),
             _ => {}
         }
 
@@ -336,16 +345,16 @@ fn generate(opts: &DemoOptions, names: [String; 3]) -> Vec<Pay> {
             };
             g.debit(d(dom), a, desc, place, "cat_dining");
         }
-        if m <= CAR_BOUGHT_M {
+        if d(1) >= clock::month_start(car_from) {
             for _ in 0..2 {
                 let dom = g.rng.int_range(1, 28) as u32;
                 let a = g.amt(48.0, 78.0);
-                if m == CAR_BOUGHT_M && dom <= CAR_DAY {
+                if d(dom) <= car_from {
                     continue;
                 }
                 g.debit(d(dom), a, T::Fuel, "Shell", "cat_transport");
             }
-            if month == 10 && m < CAR_BOUGHT_M {
+            if month == 10 && d(1) > car_from {
                 let a = g.amt(240.0, 460.0);
                 g.debit(d(20), a, T::CarService, "Autohaus Lindner", "cat_transport");
             }
@@ -383,7 +392,7 @@ fn generate(opts: &DemoOptions, names: [String; 3]) -> Vec<Pay> {
         if g.rng.chance(0.75) {
             let dom = g.rng.int_range(1, 28) as u32;
             let a = g.amt(6.0, 34.0);
-            g.debit(d(dom), a, T::Pharmacy, "City Pharmacy", "cat_health");
+            g.debit(d(dom), a, T::Pharmacy, "Linden Apotheke", "cat_health");
         }
         if month == 2 || month == 8 {
             let a = g.amt(60.0, 130.0);
@@ -479,17 +488,6 @@ fn generate(opts: &DemoOptions, names: [String; 3]) -> Vec<Pay> {
                 "cat_loan_payments",
             );
         }
-        if m == CAR_BOUGHT_M {
-            g.pay(
-                d(CAR_DAY),
-                SAV,
-                false,
-                c(CAR_PRICE_EUR),
-                T::CarPurchase,
-                "Autohaus Lindner",
-                "cat_other",
-            );
-        }
         if m == PARKING_BOUGHT_M {
             g.pay(
                 d(PARKING_DAY),
@@ -497,7 +495,7 @@ fn generate(opts: &DemoOptions, names: [String; 3]) -> Vec<Pay> {
                 false,
                 c(PARKING_PRICE_EUR),
                 T::ParkingPurchase,
-                "Notary Hartmann",
+                "Notariat Hartmann",
                 "cat_other",
             );
         }
@@ -554,7 +552,7 @@ fn generate(opts: &DemoOptions, names: [String; 3]) -> Vec<Pay> {
                 d(ETH_DAY),
                 SAV,
                 true,
-                c(ETH_SELL_EUR),
+                c(eth_sale_eur(now)),
                 T::CryptoSale,
                 "Kraken",
                 "cat_investments",
@@ -562,11 +560,23 @@ fn generate(opts: &DemoOptions, names: [String; 3]) -> Vec<Pay> {
         }
     }
 
+    g.pay(
+        car_from,
+        SAV,
+        false,
+        c(CAR_PRICE_EUR),
+        T::CarPurchase,
+        "Autohaus Lindner",
+        "cat_other",
+    );
     car_insurance(&mut g, now);
     broker_funding(&mut g, now);
     trips(&mut g, opts);
     g.out
 }
+
+/// Days before a USD trip its account is topped up.
+const TOP_UP_LEAD_DAYS: i64 = 7;
 
 /// The broker the stock purchases go through.
 const BROKER: &str = "Trade Republic";
@@ -619,7 +629,7 @@ fn broker_funding(g: &mut Gen, now: i64) {
 fn event_days(now: i64) -> std::collections::BTreeSet<i64> {
     let m = |n: i32, dom: u32| clock::months_ago(now, n, dom);
     let mut days: std::collections::BTreeSet<i64> = [
-        m(CAR_BOUGHT_M, CAR_DAY),
+        car_bought_day(now),
         m(PARKING_BOUGHT_M, PARKING_DAY),
         m(GOLD_BOUGHT_M, GOLD_DAY),
         m(BOND_BOUGHT_M, BOND_DAY),
@@ -653,27 +663,30 @@ fn trips(g: &mut Gen, opts: &DemoOptions) {
     let now = opts.now;
     let today = clock::today(now);
     let (first_year, last_year) = (clock::date_of(g.start).year(), clock::date_of(today).year());
-    let usd_from = clock::months_ago(now, 24, 1);
-    // September trips paid from the USD account (the two most recent ones)
-    let usd_trips: Vec<i64> = (first_year..=last_year)
+    // The two most recent September trips are paid from the USD account. A trip counts once
+    // its top-up day (a week before it starts) has passed; while it is in progress only its
+    // payments up to today exist (later ones are not pushed), so the travel balance is higher.
+    let mut usd_trips: Vec<i64> = (first_year..=last_year)
         .map(|y| ymd(y, LONG_TRIP.0, LONG_TRIP.1))
-        .filter(|s| *s > usd_from && *s - 7 <= today)
+        .filter(|s| *s - TOP_UP_LEAD_DAYS * DAY <= today)
         .collect();
+    usd_trips.drain(..usd_trips.len().saturating_sub(2));
     let mut usd_bal: i64 = 0;
+    // Trip payments have holiday descriptions of their own (their category is travel)
     let eur_places = [
-        (T::Restaurant, "Ristorante Da Marco"),
-        (T::Cafe, "Bar Sol"),
-        (T::Taxi, "FreeNow"),
-        (T::HolidaySpending, "Souvenir Market"),
-        (T::MuseumTickets, "City Museum"),
+        (T::HolidayMeal, "Ristorante Da Marco"),
+        (T::HolidayMeal, "Bar Sol"),
+        (T::HolidayTransport, "FreeNow"),
+        (T::HolidaySpending, "Bottega Lucia"),
+        (T::MuseumTickets, "Museo Civico"),
     ];
     let usd_places = [
-        (T::Restaurant, "Blue Plate Diner"),
-        (T::Taxi, "Uber"),
-        (T::Groceries, "Whole Foods"),
-        (T::MuseumTickets, "City Art Museum"),
-        (T::Cafe, "Corner Brew Cafe"),
-        (T::HolidaySpending, "Pier Market"),
+        (T::HolidayMeal, "Blue Plate Diner"),
+        (T::HolidayTransport, "Uber"),
+        (T::HolidayShopping, "Whole Foods"),
+        (T::MuseumTickets, "Whitmore Museum"),
+        (T::HolidayMeal, "Corner Brew Cafe"),
+        (T::HolidaySpending, "Mariner's Cove"),
     ];
 
     for year in first_year..=last_year {
@@ -701,9 +714,10 @@ fn trips(g: &mut Gen, opts: &DemoOptions) {
             let n = g.rng.int_range(4, 8) as usize;
             if long && usd_trips.contains(&start) {
                 let eur = c((g.rng.range(1_350.0, 1_450.0) / 10.0).round() * 10.0);
-                let usd = (eur as f64 * prices::usd_per_eur(start - 7 * DAY)).round() as i64;
+                let usd = (eur as f64 * prices::usd_per_eur(start - TOP_UP_LEAD_DAYS * DAY)).round()
+                    as i64;
                 g.transfer(
-                    start - 7 * DAY,
+                    start - TOP_UP_LEAD_DAYS * DAY,
                     CUR,
                     TRV,
                     eur,

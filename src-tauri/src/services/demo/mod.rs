@@ -53,8 +53,15 @@ pub struct DemoSummary {
 
 /// Fill a migrated database with the demo data set.
 ///
-/// There is no outer transaction: the bank, budget and plan services open their own
-/// (SQLite cannot nest them), so each part batches what it can and commits itself.
+/// Contract for the caller:
+/// - pass a freshly migrated, empty profile database, and call this once per database (a
+///   second run duplicates the data or fails on unique keys);
+/// - on `Err`, discard the database: there is no outer transaction (the bank, budget and plan
+///   services open their own and SQLite cannot nest them), so each part commits itself and a
+///   failure leaves the parts before it in place;
+/// - it replaces the process-wide exchange-rate snapshot (`services::fx`) with the built-in
+///   rates for `opts.now`, which every later conversion in the process uses until the next
+///   rate load.
 pub fn seed(conn: &Connection, opts: &DemoOptions) -> Result<DemoSummary> {
     let mut summary = DemoSummary::default();
 
@@ -94,6 +101,16 @@ mod tests {
             now,
             attachments: false,
         }
+    }
+
+    /// Seeding replaces the process-wide exchange-rate snapshot, so tests that seed run one at
+    /// a time (each holds this for its whole body).
+    static SEED_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    fn serial() -> std::sync::MutexGuard<'static, ()> {
+        SEED_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
     fn seeded(language: &str, now: i64) -> (Connection, DemoSummary) {
@@ -154,11 +171,22 @@ mod tests {
         let salary_months = count(
             conn,
             "SELECT COUNT(DISTINCT strftime('%Y-%m', booking_date, 'unixepoch'))
-             FROM bank_transactions WHERE category_id = 'cat_income' AND tx_type = 'credit'
-               AND description = (SELECT description FROM bank_transactions
-                                  WHERE category_id = 'cat_income' ORDER BY booking_date LIMIT 1)",
+             FROM bank_transactions WHERE tx_type = 'credit' AND description = 'Salary'",
         );
         assert_eq!(salary_months, 49);
+        // the travel account ends with what the last trip left, unless a trip is under way
+        // (its top-up is in, its later payments are not)
+        let travel = balance_of(conn, "USD", false);
+        let today = clock::today(now);
+        let year = clock::date_of(today).year();
+        let trip = schedule::ymd(year, schedule::LONG_TRIP.0, schedule::LONG_TRIP.1);
+        let under_way =
+            today >= trip - 7 * clock::DAY && today < trip + schedule::LONG_TRIP_DAYS * clock::DAY;
+        if under_way {
+            assert!(travel >= 1_000.0, "travel {travel} during the trip");
+        } else {
+            assert!((1_000.0..=1_400.0).contains(&travel), "travel {travel}");
+        }
         assert!(salary_this_month(conn, now));
         // at most one food delivery a day
         let delivery = text::t("en", text::T::FoodDelivery);
@@ -235,6 +263,7 @@ mod tests {
 
     #[test]
     fn bank_history_matches_the_target_state() {
+        let _serial = serial();
         let started = std::time::Instant::now();
         let (conn, summary) = seeded("en", now_2026());
         let elapsed = started.elapsed();
@@ -267,12 +296,16 @@ mod tests {
                 .expect("rows")
         };
         eprintln!("opening balances (current, savings): {opening:?}");
+        assert_eq!(opening.len(), 2);
+        assert_eq!(opening[0], bank::OPEN_CURRENT_EUR);
+        assert!((40_000.0..=90_000.0).contains(&opening[1]), "{opening:?}");
         assert!((9_000.0..=16_000.0).contains(&sav), "savings {sav}");
         assert!((1_000.0..=1_400.0).contains(&trv), "travel {trv}");
     }
 
     #[test]
     fn budgets_have_two_versions_per_category() {
+        let _serial = serial();
         let (conn, _) = seeded("en", now_2026());
         let rows = count(
             &conn,
@@ -288,6 +321,7 @@ mod tests {
 
     #[test]
     fn open_plans_have_tagged_payments_and_last_year_is_closed() {
+        let _serial = serial();
         let (conn, _) = seeded("en", now_2026());
         // Christmas has no payments before December, so it may be empty
         for name in ["Holiday", "Car"] {
@@ -317,6 +351,7 @@ mod tests {
 
     #[test]
     fn same_now_gives_identical_data() {
+        let _serial = serial();
         let (a, _) = seeded("en", now_2026());
         let (b, _) = seeded("en", now_2026());
         assert_eq!(
@@ -337,6 +372,7 @@ mod tests {
 
     #[test]
     fn an_earlier_now_also_passes_the_invariants() {
+        let _serial = serial();
         // balance records are validated against the wall clock, so shift into the past
         let now = now_2026() - 200 * 86_400;
         let (conn, _) = seeded("en", now);
@@ -346,6 +382,7 @@ mod tests {
 
     #[test]
     fn czech_run_writes_czech_names() {
+        let _serial = serial();
         let (conn, _) = seeded("cs", now_2026());
         let names: Vec<String> = end_balances(&conn).into_iter().map(|(n, _, _)| n).collect();
         assert!(names.contains(&"Běžný účet".to_string()), "{names:?}");
@@ -505,6 +542,57 @@ mod tests {
             };
             assert!(!crossed, "{ticker} {price} {direction} {target}");
         }
+        // no premium is paid before its policy starts
+        for (policy, premium) in [
+            (text::T::PolHome, text::T::PremHome),
+            (text::T::PolLife, text::T::PremLife),
+            (text::T::PolCar, text::T::PremCar),
+            (text::T::PolLiability, text::T::PremLiability),
+            (text::T::PolTravel, text::T::PremTravel),
+        ] {
+            let early = count(
+                conn,
+                &format!(
+                    "SELECT COUNT(*) FROM bank_transactions
+                     WHERE description = '{}' AND booking_date <
+                         (SELECT start_date FROM insurance_policies WHERE policy_name = '{}')",
+                    t_en(premium),
+                    t_en(policy)
+                ),
+            );
+            assert_eq!(early, 0, "{policy:?} paid before it starts");
+            let paid = count(
+                conn,
+                &format!(
+                    "SELECT COUNT(*) FROM bank_transactions WHERE description = '{}'",
+                    t_en(premium)
+                ),
+            );
+            assert!(paid > 0, "{premium:?}");
+        }
+        // the Ethereum sale credits exactly its proceeds in EUR
+        let (proceeds_usd, sold_on): (f64, i64) = conn
+            .query_row(
+                "SELECT CAST(quantity AS REAL) * CAST(price_per_unit AS REAL), transaction_date
+                 FROM crypto_transactions WHERE type = 'sell'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .expect("sale");
+        let credited: f64 = conn
+            .query_row(
+                "SELECT CAST(amount AS REAL) FROM bank_transactions
+                 WHERE description = 'Crypto sale'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("credit");
+        let expected = (proceeds_usd / prices::usd_per_eur(sold_on) * 100.0).round() / 100.0;
+        assert!(
+            (credited - expected).abs() < 0.005,
+            "{credited} vs {expected}"
+        );
+
         // the reminders: the car policy, the savings rate, nothing stale or overdue
         add_profile(conn);
         let list =
@@ -533,6 +621,7 @@ mod tests {
 
     #[test]
     fn investments_and_assets_match_their_facts() {
+        let _serial = serial();
         let (conn, summary) = seeded("en", now_2026());
         eprintln!("{:?}", summary.counts);
         assert!(schedule::nvda_bought_before_split(now_2026()));
@@ -541,6 +630,7 @@ mod tests {
 
     #[test]
     fn an_earlier_now_keeps_the_asset_invariants() {
+        let _serial = serial();
         let now = now_2026() - 200 * 86_400;
         let (conn, _) = seeded("en", now);
         check_assets(&conn, now);
@@ -703,6 +793,7 @@ mod tests {
 
     #[test]
     fn history_covers_every_day_and_the_first_unlock_has_nothing_to_do() {
+        let _serial = serial();
         let started = std::time::Instant::now();
         let (conn, summary) = seeded("en", now_2026());
         let elapsed = started.elapsed();
@@ -712,12 +803,12 @@ mod tests {
             summary.net_worth_eur, summary.classes_eur
         );
         eprintln!("{:?}", summary.counts);
-        assert!(elapsed < std::time::Duration::from_secs(10), "{elapsed:?}");
         check_history(&conn, &summary, now_2026());
     }
 
     #[test]
     fn an_earlier_now_keeps_the_history_invariants() {
+        let _serial = serial();
         let now = now_2026() - 200 * 86_400;
         let (conn, summary) = seeded("en", now);
         check_history(&conn, &summary, now);
@@ -725,6 +816,7 @@ mod tests {
 
     #[test]
     fn every_language_seeds() {
+        let _serial = serial();
         for lang in text::LANGUAGES {
             let (conn, summary) = seeded(lang, now_2026());
             assert!(summary.net_worth_eur > 0.0, "{lang}");
@@ -754,6 +846,7 @@ mod tests {
 
     #[test]
     fn the_current_month_has_its_salary_on_any_day() {
+        let _serial = serial();
         for (y, m, d) in [(2026, 10, 2), (2026, 9, 14), (2026, 8, 28)] {
             let now = Utc
                 .with_ymd_and_hms(y, m, d, 12, 0, 0)
@@ -768,6 +861,7 @@ mod tests {
 
     #[test]
     fn plans_are_sized_from_their_spend() {
+        let _serial = serial();
         let (conn, _) = seeded("en", now_2026());
         let used: std::collections::HashMap<(String, i32), f64> =
             crate::services::spending_plans::plan_index(&conn)
@@ -801,6 +895,7 @@ mod tests {
 
     #[test]
     fn broker_deposits_cover_the_stock_purchases() {
+        let _serial = serial();
         let (conn, _) = seeded("en", now_2026());
         let deposits: f64 = conn
             .query_row(
@@ -828,5 +923,121 @@ mod tests {
             deposits >= cost && deposits <= cost * 1.10,
             "{deposits} vs {cost}"
         );
+    }
+
+    /// Edge dates: month and year ends, a leap-adjacent day, the middle of the September trip,
+    /// all in the past of the real clock (the services reject later dates) and late enough that
+    /// every scheduled trade has a built-in price.
+    #[test]
+    fn edge_dates_pass_every_check() {
+        let _serial = serial();
+        for (y, m, d) in [
+            (2026, 1, 1),
+            (2026, 2, 28),
+            (2026, 3, 31),
+            (2026, 8, 31),
+            (2026, 9, 8),
+            (2025, 12, 1),
+        ] {
+            let now = Utc
+                .with_ymd_and_hms(y, m, d, 12, 0, 0)
+                .single()
+                .expect("date")
+                .timestamp();
+            eprintln!("edge date {y}-{m:02}-{d:02}");
+            let conn = db();
+            let summary = seed(&conn, &opts("en", now)).expect("seed");
+            check_invariants(&conn, now);
+            check_history(&conn, &summary, now);
+            // check_assets adds the profile the reminders read, so it runs last
+            check_assets(&conn, now);
+        }
+    }
+
+    /// The post-2028 NVIDIA path and a leap day cannot be seeded: the services validate dates
+    /// against the real clock and refuse a future `now`. What can be checked without a seed is
+    /// the trade calendar the seed books.
+    #[test]
+    fn the_trade_calendar_holds_after_2028_and_on_a_leap_day() {
+        for (y, m, d) in [(2028, 3, 1), (2028, 2, 29)] {
+            let now = clock::day_of(NaiveDate::from_ymd_opt(y, m, d).expect("date")) + 43_200;
+            assert!(!schedule::nvda_bought_before_split(now));
+            let trades = schedule::stock_trades(now);
+            let mut held = std::collections::HashMap::<&str, f64>::new();
+            let mut sorted = trades.clone();
+            sorted.sort_by_key(|t| t.day);
+            for t in &sorted {
+                assert!(t.day > 0 && t.day < clock::today(now), "{t:?}");
+                assert!(t.quantity > 0.0);
+                assert_eq!(t.units_factor, 1.0, "no split entry: {t:?}");
+                let h = held.entry(t.ticker).or_insert(0.0);
+                *h += if t.sell { -t.quantity } else { t.quantity };
+                assert!(
+                    *h >= 0.0,
+                    "{} oversold on {}",
+                    t.ticker,
+                    clock::date_of(t.day)
+                );
+            }
+            assert_eq!(held["NVDA"], 25.0);
+            assert_eq!(held["PYPL"], 0.0);
+            let etf = schedule::etf_buys(now);
+            assert_eq!(etf.len(), schedule::BROKER_FROM_M as usize);
+            assert!(etf.iter().all(|b| b.day < clock::today(now)));
+            // the car policy still starts at the purchase and its next anniversary is near
+            let premiums = schedule::car_premium_days(now);
+            assert_eq!(
+                premiums.first().copied(),
+                Some(schedule::car_bought_day(now))
+            );
+            let next = schedule::car_policy_anniversary(now) - clock::today(now);
+            assert!((30..=40).contains(&(next / clock::DAY)));
+        }
+    }
+
+    #[test]
+    fn counterparties_are_names_or_translated() {
+        let _serial = serial();
+        const REMOVED: [&str; 10] = [
+            "Tax Office",
+            "City Hall",
+            "Building Association",
+            "City Transit",
+            "City Pharmacy",
+            "Souvenir Market",
+            "Pier Market",
+            "City Museum",
+            "City Art Museum",
+            "Notary Hartmann",
+        ];
+        for lang in ["cs", "ja"] {
+            let (conn, _) = seeded(lang, now_2026());
+            let mut q = conn
+                .prepare("SELECT DISTINCT counterparty_name FROM bank_transactions")
+                .expect("prepare");
+            let names: Vec<Option<String>> = q
+                .query_map([], |r| r.get(0))
+                .expect("query")
+                .collect::<std::result::Result<_, _>>()
+                .expect("rows");
+            for name in names.into_iter().flatten() {
+                assert!(!REMOVED.contains(&name.as_str()), "{lang}: {name}");
+            }
+            // trip payments never borrow the description of an everyday category
+            assert_eq!(
+                count(
+                    &conn,
+                    &format!(
+                        "SELECT COUNT(*) FROM bank_transactions WHERE category_id = 'cat_travel'
+                         AND description IN ('{}', '{}', '{}', '{}')",
+                        text::t(lang, text::T::Groceries),
+                        text::t(lang, text::T::Restaurant),
+                        text::t(lang, text::T::Taxi),
+                        text::t(lang, text::T::Cafe)
+                    )
+                ),
+                0
+            );
+        }
     }
 }

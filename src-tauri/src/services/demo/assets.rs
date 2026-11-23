@@ -18,7 +18,7 @@ use crate::models::{
 use crate::services::attachments::{self, NewDocument};
 use crate::services::valuations::{self, ValuationKind};
 use crate::services::{insurance, loan_events, loans, milestones, other_assets, real_estate};
-use chrono::{Datelike, NaiveDate};
+use chrono::Datelike;
 use rusqlite::{params, Connection};
 
 /// Address of the flat and the parking space.
@@ -57,32 +57,8 @@ const KITCHEN_MONTHS: i32 = 48;
 const CAR_VALUATIONS: [(i32, &str); 3] = [(28, "16200"), (16, "14800"), (3, "13600")];
 const GOLD_VALUATIONS: [(i32, &str); 2] = [(12, "3050"), (2, "3480")];
 
-/// Policy start months (same months and days the bank pays the premiums).
-const HOME_PREMIUM: (u32, u32) = (2, 12);
-const LIABILITY_PREMIUM: (u32, u32) = (3, 14);
-const TRAVEL_PREMIUM: (u32, u32) = (6, 3);
-const LIFE_START_M: i32 = 52;
-const LIFE_DAY: u32 = 21;
-
 fn money(value: f64) -> String {
     format!("{value:.2}")
-}
-
-/// UTC midnight of `(year, month, day)`, the day clamped to the month.
-fn ymd(year: i32, month: u32, day: u32) -> i64 {
-    let dom = day.min(clock::days_in_month(year, month));
-    NaiveDate::from_ymd_opt(year, month, dom).map_or(0, clock::day_of)
-}
-
-/// The first `(month, day)` on or after `day`.
-fn first_on_or_after(day: i64, (month, dom): (u32, u32)) -> i64 {
-    let year = clock::date_of(day).year();
-    let this = ymd(year, month, dom);
-    if this >= day {
-        this
-    } else {
-        ymd(year + 1, month, dom)
-    }
 }
 
 fn valuation(
@@ -361,8 +337,6 @@ fn seed_loans(conn: &Connection, opts: &DemoOptions, created: &mut Created) -> R
 fn seed_insurance(conn: &Connection, opts: &DemoOptions, created: &mut Created) -> Result<()> {
     let now = opts.now;
     let lang = opts.language.as_str();
-    let year = clock::date_of(clock::today(now)).year();
-    let flat_bought = clock::months_ago(now, FLAT_BOUGHT_M, FLAT_DAY);
     let limit = |title: T, amount: f64| InsuranceLimit {
         title: t(lang, title).to_string(),
         amount,
@@ -373,7 +347,7 @@ fn seed_insurance(conn: &Connection, opts: &DemoOptions, created: &mut Created) 
         (
             "property",
             T::PolHome,
-            first_on_or_after(flat_bought, HOME_PREMIUM),
+            home_policy_start(now),
             "annually",
             168.0,
             vec![
@@ -406,7 +380,7 @@ fn seed_insurance(conn: &Connection, opts: &DemoOptions, created: &mut Created) 
         (
             "liability",
             T::PolLiability,
-            ymd(year - 4, LIABILITY_PREMIUM.0, LIABILITY_PREMIUM.1),
+            liability_policy_start(now),
             "annually",
             62.0,
             vec![limit(T::LimLiability, 2_000_000.0)],
@@ -415,7 +389,7 @@ fn seed_insurance(conn: &Connection, opts: &DemoOptions, created: &mut Created) 
         (
             "travel",
             T::PolTravel,
-            ymd(year - 3, TRAVEL_PREMIUM.0, TRAVEL_PREMIUM.1),
+            travel_policy_start(now),
             "annually",
             54.0,
             vec![limit(T::LimMedical, 300_000.0)],
@@ -464,7 +438,7 @@ fn seed_other_assets(conn: &Connection, opts: &DemoOptions) -> Result<()> {
             CAR_NAME,
             1.0,
             CAR_PRICE_EUR,
-            m(CAR_BOUGHT_M, CAR_DAY),
+            car_bought_day(now),
             &CAR_VALUATIONS,
         ),
         (

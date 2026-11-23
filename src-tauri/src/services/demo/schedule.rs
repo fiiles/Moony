@@ -4,6 +4,7 @@
 //! same day in every part.
 
 use super::clock::{self, DAY};
+use super::prices;
 use super::rng::Rng;
 use chrono::{Datelike, NaiveDate};
 
@@ -40,10 +41,6 @@ pub const PARKING_PRICE_EUR: f64 = 21_500.0;
 /// Monthly rent of the parking space in EUR.
 pub const PARKING_RENT_EUR: f64 = 95.0;
 
-/// The car is bought (17 900 from savings).
-pub const CAR_BOUGHT_M: i32 = 40;
-/// Day of the month of the car purchase.
-pub const CAR_DAY: u32 = 12;
 /// Purchase price of the car in EUR.
 pub const CAR_PRICE_EUR: f64 = 17_900.0;
 
@@ -69,7 +66,7 @@ pub const ETH_DAY: u32 = 20;
 /// Month of the partial Ethereum sale (credited to the savings account, which pays for the
 /// crypto purchases).
 pub const ETH_SELL_M: i32 = 11;
-/// EUR credited by the Ethereum sale.
+/// EUR the Ethereum sale aims at (the credited amount is [`eth_sale_eur`]).
 pub const ETH_SELL_EUR: f64 = 1_500.0;
 
 /// The government bond is bought (6 x 1 000 from savings).
@@ -104,30 +101,166 @@ pub fn car_policy_anniversary(now: i64) -> i64 {
     today + (30 + (today / DAY).rem_euclid(11)) * DAY
 }
 
-/// The car premium days, oldest first: the anniversary's month and day in every year from the
-/// first one on or after the car purchase up to the year before the next anniversary. The
-/// first one is the start of the car policy.
-pub fn car_premium_days(now: i64) -> Vec<i64> {
-    let next = clock::date_of(car_policy_anniversary(now));
-    let bought = clock::months_ago(now, CAR_BOUGHT_M, CAR_DAY);
-    let mut days: Vec<i64> = (1..=CAR_BOUGHT_M / 12 + 2)
-        .filter_map(|k| {
-            let year = next.year() - k;
-            let dom = next.day().min(clock::days_in_month(year, next.month()));
-            NaiveDate::from_ymd_opt(year, next.month(), dom).map(clock::day_of)
-        })
-        .filter(|day| *day >= bought)
-        .collect();
-    days.sort_unstable();
-    days
+/// Years between the car purchase and the next policy anniversary (the car is about `M35`).
+const CAR_YEARS: i32 = 3;
+
+/// `date`'s month and day in `year` (Feb 29 becomes Feb 28).
+fn in_year(date: NaiveDate, year: i32) -> i64 {
+    let dom = date.day().min(clock::days_in_month(year, date.month()));
+    NaiveDate::from_ymd_opt(year, date.month(), dom).map_or(0, clock::day_of)
 }
 
-/// Start of the car policy: the first premium day (the car purchase if there is none).
+/// UTC midnight of `(year, month, day)`, the day clamped to the month.
+pub fn ymd(year: i32, month: u32, day: u32) -> i64 {
+    let dom = day.min(clock::days_in_month(year, month));
+    NaiveDate::from_ymd_opt(year, month, dom).map_or(0, clock::day_of)
+}
+
+/// The first `(month, day)` on or after `day`.
+pub fn first_on_or_after(day: i64, (month, dom): (u32, u32)) -> i64 {
+    let year = clock::date_of(day).year();
+    let this = ymd(year, month, dom);
+    if this >= day {
+        this
+    } else {
+        ymd(year + 1, month, dom)
+    }
+}
+
+/// The car purchase: the policy anniversary's month and day three years before the next
+/// anniversary. The car policy starts that day, so every anniversary falls on it.
+pub fn car_bought_day(now: i64) -> i64 {
+    let next = clock::date_of(car_policy_anniversary(now));
+    in_year(next, next.year() - CAR_YEARS)
+}
+
+/// The car premium days, oldest first: the purchase day (the policy start) and every
+/// anniversary since, up to the year before the next one.
+pub fn car_premium_days(now: i64) -> Vec<i64> {
+    let next = clock::date_of(car_policy_anniversary(now));
+    (1..=CAR_YEARS)
+        .rev()
+        .map(|k| in_year(next, next.year() - k))
+        .collect()
+}
+
+/// Start of the car policy: the car purchase.
 pub fn car_policy_start(now: i64) -> i64 {
-    car_premium_days(now)
-        .first()
-        .copied()
-        .unwrap_or_else(|| clock::months_ago(now, CAR_BOUGHT_M, CAR_DAY))
+    car_bought_day(now)
+}
+
+/// Month and day the yearly home, liability and travel premiums are paid (policy anniversaries).
+pub const HOME_PREMIUM: (u32, u32) = (2, 12);
+pub const LIABILITY_PREMIUM: (u32, u32) = (3, 14);
+pub const TRAVEL_PREMIUM: (u32, u32) = (6, 3);
+/// The life policy starts here; its monthly premium is paid on this day of the month.
+pub const LIFE_START_M: i32 = 52;
+pub const LIFE_DAY: u32 = 21;
+
+/// First day of the bank history.
+pub fn history_start(now: i64) -> i64 {
+    clock::months_ago(now, HISTORY_MONTHS, 1)
+}
+
+/// Home policy: from the first premium day after the flat purchase.
+pub fn home_policy_start(now: i64) -> i64 {
+    first_on_or_after(
+        clock::months_ago(now, FLAT_BOUGHT_M, FLAT_DAY),
+        HOME_PREMIUM,
+    )
+}
+
+/// Liability policy: March four years ago, or the first premium in the history if that is
+/// earlier.
+pub fn liability_policy_start(now: i64) -> i64 {
+    let year = clock::date_of(clock::today(now)).year();
+    let (m, d) = LIABILITY_PREMIUM;
+    ymd(year - 4, m, d).min(first_on_or_after(history_start(now), LIABILITY_PREMIUM))
+}
+
+/// Travel policy: from the first travel premium inside the history.
+pub fn travel_policy_start(now: i64) -> i64 {
+    first_on_or_after(history_start(now), TRAVEL_PREMIUM)
+}
+
+/// One crypto trade, priced at the day's close (USD, two decimals).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CryptoTrade {
+    pub ticker: &'static str,
+    pub name: &'static str,
+    pub symbol: &'static str,
+    pub day: i64,
+    /// Units, five decimals.
+    pub quantity: f64,
+    /// USD per unit, two decimals.
+    pub price: f64,
+    pub sell: bool,
+}
+
+fn round_to(value: f64, decimals: i32) -> f64 {
+    let f = 10f64.powi(decimals);
+    (value * f).round() / f
+}
+
+/// Every crypto trade, oldest first per coin: the Bitcoin buys and the Ethereum buys for the
+/// scheduled euro amounts, then the partial Ethereum sale (never more than half the holding).
+pub fn crypto_trades(now: i64) -> Vec<CryptoTrade> {
+    let trade = |(ticker, name, symbol): (&'static str, &'static str, &'static str),
+                 day: i64,
+                 eur: f64,
+                 cap: f64,
+                 sell: bool| {
+        let price = round_to(prices::price_on(ticker, day).map_or(1.0, |(p, _)| p), 2);
+        CryptoTrade {
+            ticker,
+            name,
+            symbol,
+            day,
+            quantity: round_to(eur * prices::usd_per_eur(day) / price, 5).min(cap),
+            price,
+            sell,
+        }
+    };
+    const BTC: (&str, &str, &str) = ("BTC", "Bitcoin", "BTC-USD");
+    const ETH: (&str, &str, &str) = ("ETH", "Ethereum", "ETH-USD");
+    let mut out = Vec::new();
+    for (m, eur) in BTC_BUYS_M.iter().zip(BTC_BUYS_EUR) {
+        out.push(trade(
+            BTC,
+            clock::months_ago(now, *m, BTC_DAY),
+            eur,
+            f64::MAX,
+            false,
+        ));
+    }
+    let mut held = 0.0;
+    for (m, eur) in ETH_BUYS_M.iter().zip(ETH_BUYS_EUR) {
+        let buy = trade(
+            ETH,
+            clock::months_ago(now, *m, ETH_DAY),
+            eur,
+            f64::MAX,
+            false,
+        );
+        held += buy.quantity;
+        out.push(buy);
+    }
+    let half = (held / 2.0 * 100_000.0).floor() / 100_000.0;
+    out.push(trade(
+        ETH,
+        clock::months_ago(now, ETH_SELL_M, ETH_DAY),
+        ETH_SELL_EUR,
+        half,
+        true,
+    ));
+    out
+}
+
+/// EUR the Ethereum sale credits: its proceeds at the day's rate, in cents.
+pub fn eth_sale_eur(now: i64) -> f64 {
+    crypto_trades(now).iter().find(|t| t.sell).map_or(0.0, |t| {
+        round_to(t.quantity * t.price / prices::usd_per_eur(t.day), 2)
+    })
 }
 
 // --- the stock trade calendar (invest.rs books it, bank.rs funds it) ----------------------

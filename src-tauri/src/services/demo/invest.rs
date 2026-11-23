@@ -279,7 +279,7 @@ pub fn seed(conn: &Connection, opts: &DemoOptions, summary: &mut DemoSummary) ->
             continue;
         };
         let (_, currency) = price(ticker, today)?;
-        let events: Vec<DividendEvent> = prices::dividends(ticker)
+        let events: Vec<DividendEvent> = prices::dividends(ticker, today)
             .into_iter()
             .filter(|(ex, _)| *ex >= first && *ex <= today)
             .map(|(ex_date, amount)| DividendEvent {
@@ -433,24 +433,16 @@ fn seed_watchlist(conn: &Connection, lang: &str, now: i64) -> Result<()> {
 fn seed_crypto(conn: &Connection, now: i64) -> Result<usize> {
     let today = clock::today(now);
     let mut trades = 0;
-    let mut add = |ticker: &str,
-                   name: &str,
-                   symbol: &str,
-                   day: i64,
-                   quantity: f64,
-                   sell: bool,
-                   id: &mut Option<String>|
-     -> Result<()> {
-        let (close, currency) = price(ticker, day)?;
+    let mut add = |trade: CryptoTrade, id: &mut Option<String>| -> Result<()> {
         let data = InsertCryptoTransaction {
             investment_id: None,
-            tx_type: if sell { "sell" } else { "buy" }.to_string(),
-            ticker: ticker.to_string(),
-            name: name.to_string(),
-            quantity: format!("{quantity:.5}"),
-            price_per_unit: format!("{close:.2}"),
-            currency: currency.to_string(),
-            transaction_date: day,
+            tx_type: if trade.sell { "sell" } else { "buy" }.to_string(),
+            ticker: trade.ticker.to_string(),
+            name: trade.name.to_string(),
+            quantity: format!("{:.5}", trade.quantity),
+            price_per_unit: format!("{:.2}", trade.price),
+            currency: "USD".to_string(),
+            transaction_date: trade.day,
         };
         match id {
             Some(id) => {
@@ -459,9 +451,9 @@ fn seed_crypto(conn: &Connection, now: i64) -> Result<usize> {
             None => {
                 let created = crypto_investments::create_crypto_with_transaction(
                     conn,
-                    ticker,
-                    Some(symbol),
-                    name,
+                    trade.ticker,
+                    Some(trade.symbol),
+                    trade.name,
                     Some(&data),
                 )?;
                 *id = Some(created.id);
@@ -470,36 +462,16 @@ fn seed_crypto(conn: &Connection, now: i64) -> Result<usize> {
         trades += 1;
         Ok(())
     };
-    let units = |ticker: &str, eur: f64, day: i64| -> Result<f64> {
-        let (close, _) = price(ticker, day)?;
-        Ok(round(eur * prices::usd_per_eur(day) / close, 5))
-    };
-
     let mut btc = None;
-    for (m, eur) in BTC_BUYS_M.iter().zip(BTC_BUYS_EUR) {
-        let day = clock::months_ago(now, *m, BTC_DAY);
-        add(
-            "BTC",
-            "Bitcoin",
-            "BTC-USD",
-            day,
-            units("BTC", eur, day)?,
-            false,
-            &mut btc,
-        )?;
-    }
     let mut eth = None;
-    let mut held = 0.0;
-    for (m, eur) in ETH_BUYS_M.iter().zip(ETH_BUYS_EUR) {
-        let day = clock::months_ago(now, *m, ETH_DAY);
-        let quantity = units("ETH", eur, day)?;
-        held += quantity;
-        add("ETH", "Ethereum", "ETH-USD", day, quantity, false, &mut eth)?;
+    for trade in crypto_trades(now) {
+        let id = if trade.ticker == "BTC" {
+            &mut btc
+        } else {
+            &mut eth
+        };
+        add(trade, id)?;
     }
-    let day = clock::months_ago(now, ETH_SELL_M, ETH_DAY);
-    let half = (held / 2.0 * 100_000.0).floor() / 100_000.0;
-    let quantity = units("ETH", ETH_SELL_EUR, day)?.min(half);
-    add("ETH", "Ethereum", "ETH-USD", day, quantity, true, &mut eth)?;
 
     for ticker in ["BTC", "ETH"] {
         let (close, currency) = price(ticker, today)?;

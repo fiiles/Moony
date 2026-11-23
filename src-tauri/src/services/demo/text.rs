@@ -225,6 +225,20 @@ texts! {
     WatchNote1 => ["Waiting for a better entry price", "Čekám na lepší nákupní cenu", "Warte auf einen besseren Einstiegskurs", "Esperando un mejor precio de entrada", "Aspetto un prezzo d'ingresso migliore", "Venter på en bedre inngangspris", "Czekam na lepszą cenę wejścia", "Väntar på ett bättre ingångspris", "より良い買い場を待つ", "等待更好的买入价"];
     /// Short note on a watchlist stock.
     WatchNote2 => ["Interesting long-term, review every quarter", "Zajímavé z dlouhodobého hlediska, kontrola každé čtvrtletí", "Langfristig interessant, quartalsweise prüfen", "Interesante a largo plazo, revisar cada trimestre", "Interessante nel lungo periodo, da rivedere ogni trimestre", "Interessant på lang sikt, gjennomgås hvert kvartal", "Ciekawa na lata, przegląd co kwartał", "Intressant på lång sikt, ses över varje kvartal", "長期で注目、四半期ごとに見直す", "长期看好，每季度复查"];
+    /// Trip payment: a meal or a coffee on holiday (category travel).
+    HolidayMeal => ["Meal on holiday", "Jídlo na dovolené", "Essen im Urlaub", "Comida en vacaciones", "Pasto in vacanza", "Måltid på ferie", "Posiłek na wakacjach", "Måltid på semestern", "旅行中の食事", "度假餐饮"];
+    /// Trip payment: local transport on holiday (category travel).
+    HolidayTransport => ["Transport on holiday", "Doprava na dovolené", "Fahrten im Urlaub", "Transporte en vacaciones", "Trasporti in vacanza", "Transport på ferie", "Transport na wakacjach", "Resor på semestern", "旅行中の交通費", "度假交通"];
+    /// Trip payment: shopping on holiday (category travel).
+    HolidayShopping => ["Shopping on holiday", "Nákupy na dovolené", "Einkäufe im Urlaub", "Compras en vacaciones", "Acquisti in vacanza", "Innkjøp på ferie", "Zakupy na wakacjach", "Inköp på semestern", "旅行中の買い物", "度假购物"];
+    /// Counterparty of the tax refund.
+    TaxOffice => ["Tax office", "Finanční úřad", "Finanzamt", "Agencia Tributaria", "Agenzia delle Entrate", "Skatteetaten", "Urząd Skarbowy", "Skatteverket", "税務署", "税务局"];
+    /// Counterparty of the property tax.
+    Municipality => ["City council", "Městský úřad", "Stadtverwaltung", "Ayuntamiento", "Comune", "Kommunen", "Urząd Miasta", "Kommunen", "市役所", "市政府"];
+    /// Counterparty of the building fee.
+    OwnersAssociation => ["Owners' association", "Společenství vlastníků", "Eigentümergemeinschaft", "Comunidad de propietarios", "Condominio", "Sameiet", "Wspólnota mieszkaniowa", "Bostadsrättsföreningen", "管理組合", "业主委员会"];
+    /// Counterparty of the transit pass.
+    PublicTransport => ["Public transport", "Dopravní podnik", "Verkehrsbetriebe", "Transporte público", "Trasporto pubblico", "Kollektivtransport", "Komunikacja miejska", "Kollektivtrafiken", "交通局", "公交公司"];
 }
 
 #[cfg(test)]

@@ -124,6 +124,9 @@ pub async fn refresh_watched_stock_prices(
     recalc: State<'_, HistoryRecalc>,
     force_refresh: Option<bool>,
 ) -> Result<StockPriceRefreshResult> {
+    // Pinned to the session open now: a refresh that outlives a lock or a profile switch (the
+    // demo profile closing, ADR 0037) fails instead of writing into the next database.
+    let db = &db.current_session()?;
     let tickers: Vec<String> = db.with_conn(|conn| {
         let mut stmt = conn.prepare("SELECT ticker FROM watched_stocks")?;
         let tickers = stmt
@@ -143,16 +146,16 @@ pub async fn refresh_watched_stock_prices(
     }
     let force = force_refresh.unwrap_or(false);
     let result = price_api::refresh_stock_prices_yahoo_with_ttl(
-        &db,
+        db,
         tickers.clone(),
         force,
         WATCHLIST_PRICE_TTL_SECONDS,
     )
     .await?;
-    rebuild_history_after_quote_refresh(&app, &db, &recalc, &result);
+    rebuild_history_after_quote_refresh(&app, db, &recalc, &result);
     // Manual refresh forces metadata too, so corrected fields (e.g. a fixed
     // dividend yield) heal immediately instead of after the 24 h TTL.
-    let _ = price_api::refresh_stock_metadata_yahoo(&db, tickers, force).await;
+    let _ = price_api::refresh_stock_metadata_yahoo(db, tickers, force).await;
     Ok(result)
 }
 

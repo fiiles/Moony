@@ -3,7 +3,9 @@
 
 use std::path::PathBuf;
 
-use tauri::{AppHandle, Manager, State};
+#[cfg(mobile)]
+use tauri::Manager;
+use tauri::{AppHandle, State};
 
 use crate::db::Database;
 use crate::error::{AppError, Result};
@@ -12,14 +14,15 @@ use crate::models::{
 };
 use crate::services::backup;
 use crate::services::local_api::LocalApiServer;
+use crate::services::profile_dir;
 use crate::services::session_key::SessionKey;
 
 const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
+/// The open profile's folder (ADR 0037): what a backup reads and what the data location shows.
+/// A restore always writes the real profile's folder.
 fn data_dir(app: &AppHandle) -> Result<PathBuf> {
-    app.path()
-        .app_data_dir()
-        .map_err(|e| AppError::Internal(format!("Failed to get app data dir: {e}")))
+    profile_dir::open_profile_dir(app)
 }
 
 fn known_migrations() -> Vec<&'static str> {
@@ -242,7 +245,9 @@ pub async fn restore_backup(
     local_api: State<'_, LocalApiServer>,
     path: String,
 ) -> Result<()> {
-    let dir = data_dir(&app)?;
+    // Before anything stops: the demo is never locked or replaced by a restore.
+    profile_dir::ensure_not_demo()?;
+    let dir = profile_dir::real_dir(&app)?;
     local_api.stop().await;
     crate::commands::sync::stop_engine_and_wait(&app).await;
     crate::commands::sync::forget_kit_window();
@@ -251,6 +256,8 @@ pub async fn restore_backup(
     crate::services::auth::logout(&db, &session);
     crate::commands::attachments::wipe_open_copies(&app);
     backup::restore_backup(&dir, &PathBuf::from(path), &known_migrations())?;
+    // A real profile exists now: the demo profile goes.
+    crate::commands::demo::discard_beside_real_profile(&app);
     // The archive carries its own master key, so the key biometric unlock holds no longer opens
     // the profile: switch it off (the phone's frontend also does so first; twice is harmless).
     crate::commands::biometric::switch_off(&app).await;

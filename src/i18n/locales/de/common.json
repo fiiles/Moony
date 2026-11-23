@@ -403,7 +403,9 @@
     "setupNotPrepared": "Die Kontoeinrichtung wurde unterbrochen. Gehen Sie zurück und legen Sie Ihr Konto erneut an.",
     "biometricInvalidated": "Die Biometrie hat sich geändert. Entsperren Sie mit Ihrem Passwort und schalten Sie sie erneut ein.",
     "biometricCancelled": "Die biometrische Entsperrung wurde abgebrochen.",
-    "biometricFailed": "Die Überprüfung ist fehlgeschlagen. Entsperren Sie mit Ihrem Passwort."
+    "biometricFailed": "Die Überprüfung ist fehlgeschlagen. Entsperren Sie mit Ihrem Passwort.",
+    "notInDemo": "Im Beispielprofil ist das nicht verfügbar. Legen Sie ein eigenes Profil an, um es zu nutzen.",
+    "demoUnavailable": "Das Beispielprofil ist gerade nicht verfügbar. Es lässt sich nur nutzen, bevor Sie ein eigenes Profil anlegen."
   },
   "time": {
     "today": "Heute",
@@ -686,5 +688,23 @@
   "filterBadge": {
     "label": "Filter: {{labels}}",
     "clear": "Filter aufheben"
+  },
+  "demo": {
+    "badge": "Beispiel",
+    "sidebarText": "Sie sehen erfundene Daten. Wenn Sie mit Ihren eigenen Finanzen beginnen möchten:",
+    "createProfile": "Eigenes Profil anlegen",
+    "accountRow": "Beispielprofil",
+    "exit": "Beispiel beenden",
+    "topBadge": "Beispieldaten",
+    "popoverTitle": "Sie sehen Beispieldaten",
+    "popoverText": "Alex Meyer ist erfunden. Was Sie hier ändern, bleibt im Beispiel und wird nicht in Ihr Profil übernommen.",
+    "reset": {
+      "title": "Ursprüngliche Daten wiederherstellen",
+      "lead": "Das Beispiel kehrt in den Zustand zurück, in dem Sie es zum ersten Mal geöffnet haben.",
+      "noticeTitle": "Ihre Änderungen im Beispiel gehen verloren",
+      "noticeText": "Alles, was Sie im Beispiel hinzugefügt, bearbeitet oder gelöscht haben, wird zurückgesetzt. Ihr eigenes Profil ist davon nicht betroffen.",
+      "confirm": "Ursprüngliche Daten wiederherstellen",
+      "done": "Das Beispiel ist wieder im ursprünglichen Zustand"
+    }
   }
 }

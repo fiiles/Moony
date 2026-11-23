@@ -5,12 +5,18 @@
  */
 import { useLocation } from 'wouter';
 import { useDeviceSyncFeature } from '@/hooks/use-device-sync';
+import { useAuth } from '@/hooks/use-auth';
 import { SyncSection } from '@/components/settings/sync/SyncSection';
 import { SettingsLayout } from '@/components/settings/SettingsLayout';
 import {
+  isLockedSection,
   resolveSettingsSection,
   type SettingsSectionId,
 } from '@/components/settings/settings-sections';
+import {
+  DemoSettingsSection,
+  LockedInDemoSection,
+} from '@/components/settings/DemoSettingsSection';
 import {
   AccountSection,
   CategorizationSection,
@@ -21,6 +27,7 @@ import {
 } from '@/components/settings/SettingsSectionPages';
 
 const SECTION_PAGES: Record<SettingsSectionId, () => React.JSX.Element> = {
+  demo: DemoSettingsSection,
   general: GeneralSection,
   security: SecuritySection,
   data: DataSettingsSection,
@@ -33,12 +40,14 @@ const SECTION_PAGES: Record<SettingsSectionId, () => React.JSX.Element> = {
 export default function SettingsPage() {
   const [location] = useLocation();
   const syncFeature = useDeviceSyncFeature();
-  const active = resolveSettingsSection(location, syncFeature);
+  const { isDemo } = useAuth();
+  const active = resolveSettingsSection(location, syncFeature, isDemo);
   const Section = SECTION_PAGES[active];
 
   return (
     <SettingsLayout active={active}>
-      <Section />
+      {/* The demo lists what needs a real profile, but shows only why it is locked (ADR 0037) */}
+      {isLockedSection(active, isDemo) ? <LockedInDemoSection id={active} /> : <Section />}
     </SettingsLayout>
   );
 }

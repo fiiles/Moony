@@ -195,6 +195,11 @@ async fn run_app() {
             tauri::async_runtime::spawn_blocking(move || {
                 commands::attachments::wipe_open_copies(&handle)
             });
+            // A demo profile left next to a real profile goes (ADR 0037).
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn_blocking(move || {
+                commands::demo::discard_beside_real_profile(&handle)
+            });
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())
@@ -237,6 +242,7 @@ async fn run_app() {
         .manage(LocalApiServer::new())
         .manage(commands::attachments::AttachmentConversion::default())
         .manage(commands::sync::SyncEngineState::default())
+        .manage(commands::demo::DemoLifecycle::default())
         // Attachment bytes reach the webview only through this scheme (ADR 0017).
         .register_asynchronous_uri_scheme_protocol(
             services::attachment_protocol::SCHEME,
@@ -248,7 +254,8 @@ async fn run_app() {
                         .get("Origin")
                         .and_then(|v| v.to_str().ok())
                         .map(str::to_owned);
-                    let response = match app.path().app_data_dir() {
+                    // The open profile's folder: the demo's while the demo is open (ADR 0037).
+                    let response = match services::profile_dir::open_profile_dir(&app) {
                         Ok(data_dir) => services::attachment_protocol::respond(
                             &app.state::<Database>(),
                             &data_dir,
@@ -256,10 +263,9 @@ async fn run_app() {
                             request.uri().path(),
                             origin.as_deref(),
                         ),
-                        Err(e) => services::attachment_protocol::response_for(
-                            Err(error::AppError::Internal(e.to_string())),
-                            origin.as_deref(),
-                        ),
+                        Err(e) => {
+                            services::attachment_protocol::response_for(Err(e), origin.as_deref())
+                        }
                     };
                     responder.respond(response);
                 });
@@ -340,6 +346,12 @@ async fn run_app() {
             commands::auth::get_mcp_server_token,
             commands::auth::set_mcp_server_port,
             commands::auth::regenerate_mcp_token,
+            // Demo profile (services::demo::profile, ADR 0037)
+            commands::demo::demo_status,
+            commands::demo::demo_open,
+            commands::demo::demo_reset,
+            commands::demo::demo_close,
+            commands::demo::demo_discard,
             // Biometric unlock (services::biometric_unlock): phone and desktop
             commands::biometric::biometric_unlock_status,
             commands::biometric::enable_biometric_unlock,

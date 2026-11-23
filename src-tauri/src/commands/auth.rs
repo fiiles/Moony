@@ -1,11 +1,13 @@
 //! Authentication commands
 
+use crate::commands::demo::DemoLifecycle;
 use crate::commands::sync::{password_given, verify_password};
 use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::{InsertUserProfile, UpdateUserProfile, UserProfile};
 use crate::services::auth::{self, PendingSetup};
 use crate::services::local_api::LocalApiServer;
+use crate::services::profile_dir;
 use crate::services::session_key::SessionKey;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -109,7 +111,9 @@ fn db_path_from_app_dir<E: std::fmt::Display>(
         .map_err(|e| AppError::Internal(format!("Failed to get app data dir: {e}")))
 }
 
-/// Get the database path for the app
+/// The real profile's database path (`<app data folder>/moony.db`): the key files, unlock, setup,
+/// recovery, the password, biometric unlock and sync all belong to the real profile, never to the
+/// demo (ADR 0037).
 pub(crate) fn get_db_path(app: &AppHandle) -> Result<PathBuf> {
     db_path_from_app_dir(app.path().app_data_dir())
 }
@@ -138,9 +142,19 @@ pub async fn confirm_setup(
     db: State<'_, Database>,
     session: State<'_, SessionKey>,
     pending: State<'_, PendingSetup>,
+    local_api: State<'_, LocalApiServer>,
+    lifecycle: State<'_, DemoLifecycle>,
     data: ConfirmSetupData,
 ) -> Result<UserProfile> {
     let db_path = get_db_path(&app)?;
+    // The wizard closes the demo before it starts; should it still be open, it ends here, before
+    // the new profile takes the connection (one demo lifecycle step at a time).
+    {
+        let _one = lifecycle.0.lock().await;
+        if profile_dir::demo_open() {
+            end_session(&app, &db, &session, &local_api).await;
+        }
+    }
 
     let profile_data = InsertUserProfile {
         name: data.name,
@@ -162,6 +176,9 @@ pub async fn confirm_setup(
             prepared,
         )
     })?;
+    // A real profile exists now (also on the wizard's sync-join path, which creates it here and
+    // joins afterwards): the demo profile goes.
+    crate::commands::demo::discard_beside_real_profile(&app);
     // The folder was (re)created for the new profile: keep it out of device backups (phone only).
     #[cfg(mobile)]
     crate::commands::device_backup::exclude_data_dir(&app).await;
@@ -255,15 +272,39 @@ pub async fn logout(
     db: State<'_, Database>,
     session: State<'_, SessionKey>,
     local_api: State<'_, LocalApiServer>,
+    lifecycle: State<'_, DemoLifecycle>,
 ) -> Result<()> {
+    // Never in the middle of a demo open or reset (uncontended for a real profile).
+    let _one = lifecycle.0.lock().await;
+    end_session(&app, &db, &session, &local_api).await;
+    Ok(())
+}
+
+/// Everything a lock does: the MCP server and the sync engine stop, the sync flows in progress
+/// are forgotten, the database closes with the session key, and the decrypted copies go. The demo
+/// profile's close is the same (`commands::demo`), so it also clears the demo flag: a lock in the
+/// demo ends it rather than leaving the app pointed at the demo folder with nothing open, and takes
+/// what the demo left in the process with it (`demo::profile::clear_session_state`: its exchange
+/// rates, the categorization engine's layers, queued history work). Callers hold [`DemoLifecycle`].
+pub(crate) async fn end_session(
+    app: &AppHandle,
+    db: &Database,
+    session: &SessionKey,
+    local_api: &LocalApiServer,
+) {
     local_api.stop().await;
-    crate::commands::sync::stop_engine_and_wait(&app).await;
+    crate::commands::sync::stop_engine_and_wait(app).await;
     crate::commands::sync::forget_kit_window();
     crate::commands::sync_pairing::forget_pairing();
-    crate::commands::sync::clear_copied_code(&app);
-    auth::logout(&db, &session);
+    crate::commands::sync::clear_copied_code(app);
+    auth::logout(db, session);
+    crate::services::demo::profile::clear_session_state(
+        &app.state::<crate::commands::categorization::CategorizationState>()
+            .0,
+        &app.state::<crate::services::history_recalc::HistoryRecalc>(),
+    );
     // Decrypted copies opened in other apps go with the session (D3).
-    crate::commands::attachments::wipe_open_copies(&app);
+    crate::commands::attachments::wipe_open_copies(app);
     // So do WebKit's plaintext copies of the files picked in the phone's upload sheets.
     #[cfg(mobile)]
     match app.path().temp_dir() {
@@ -282,7 +323,6 @@ pub async fn logout(
         }
         Err(e) => log::warn!("[UPLOAD] Camera capture sweep at lock skipped: {e}"),
     }
-    Ok(())
 }
 
 /// Check if currently authenticated
@@ -345,6 +385,8 @@ pub async fn delete_account(
     delete_synced_data: Option<bool>,
     password: Option<String>,
 ) -> Result<()> {
+    // The demo has no account to delete (its own "Obnovit"/"Ukončit" handle it).
+    profile_dir::ensure_not_demo()?;
     let delete_synced_data = delete_synced_data.unwrap_or(false);
     if delete_synced_data {
         // Deleting the synced data deletes it for every device: the device password first, as a
@@ -387,6 +429,10 @@ pub async fn set_mcp_server_enabled(
     local_api: State<'_, LocalApiServer>,
     enabled: bool,
 ) -> Result<UserProfile> {
+    if enabled {
+        // The demo's synthetic data never leaves the device through the MCP server.
+        profile_dir::ensure_not_demo()?;
+    }
     if enabled && !local_api.is_running() {
         local_api.start((*db).clone(), app.clone()).await?;
     } else if !enabled && local_api.is_running() {

@@ -403,7 +403,9 @@
     "setupNotPrepared": "Zakládání účtu bylo přerušeno. Vraťte se zpět a založte účet znovu.",
     "biometricInvalidated": "Biometrie se změnila, odemkněte heslem a zapněte ji znovu.",
     "biometricCancelled": "Odemknutí biometrií bylo zrušeno.",
-    "biometricFailed": "Ověření se nezdařilo, odemkněte heslem."
+    "biometricFailed": "Ověření se nezdařilo, odemkněte heslem.",
+    "notInDemo": "V ukázkovém profilu tohle není k dispozici. Pro tuto funkci si založte vlastní profil.",
+    "demoUnavailable": "Ukázkový profil teď není k dispozici. Lze ho používat jen do založení vlastního profilu."
   },
   "time": {
     "today": "Dnes",
@@ -692,5 +694,23 @@
   "filterBadge": {
     "label": "Filtr: {{labels}}",
     "clear": "Zrušit filtr"
+  },
+  "demo": {
+    "badge": "Ukázka",
+    "sidebarText": "Prohlížíte smyšlená data. Až budete chtít začít se svými financemi:",
+    "createProfile": "Založit vlastní profil",
+    "accountRow": "Ukázkový profil",
+    "exit": "Ukončit ukázku",
+    "topBadge": "Ukázková data",
+    "popoverTitle": "Prohlížíte ukázková data",
+    "popoverText": "Alex Meyer je smyšlený. Co tady změníte, zůstane jen v ukázce a do vašeho profilu se nepřenese.",
+    "reset": {
+      "title": "Obnovit původní data",
+      "lead": "Ukázka se vrátí do stavu, v jakém jste ji poprvé otevřeli.",
+      "noticeTitle": "Vaše změny v ukázce zmizí",
+      "noticeText": "Všechno, co jste v ukázce přidali, upravili nebo smazali, se vrátí zpět. Vašeho vlastního profilu se to netýká.",
+      "confirm": "Obnovit původní data",
+      "done": "Ukázka je zpět v původním stavu"
+    }
   }
 }

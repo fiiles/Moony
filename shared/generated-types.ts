@@ -877,6 +877,24 @@ count: number | null }
 export type DeclaredBalance = { amount: string; currency: string; asOf: number }
 
 /**
+ * The `demo_status` answer, readable with no profile open.
+ */
+export type DemoStatus = { 
+/**
+ * A complete demo profile is stored (its completeness marker is there) and no real profile
+ * exists next to it.
+ */
+exists: boolean; 
+/**
+ * When the stored demo was last opened (unix seconds); `None` when there is none.
+ */
+lastOpenedAt: number | null; 
+/**
+ * The demo is the open profile right now (survives a webview reload).
+ */
+active: boolean }
+
+/**
  * How the direction of a trade is read.
  */
 export type DirectionMode = 

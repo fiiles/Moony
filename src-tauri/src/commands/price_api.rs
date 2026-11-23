@@ -87,6 +87,9 @@ pub async fn refresh_stock_prices(
     recalc: State<'_, HistoryRecalc>,
     force_refresh: Option<bool>,
 ) -> Result<StockPriceRefreshResult> {
+    // Pinned to the session open now: a refresh that outlives a lock or a profile switch (the
+    // demo profile closing, ADR 0037) fails instead of writing into the next database.
+    let db = &db.current_session()?;
     // Get all tickers from investments
     let tickers: Vec<String> = db.with_conn(|conn| {
         let mut stmt = conn.prepare("SELECT DISTINCT si.ticker FROM stock_investments si")?;
@@ -109,14 +112,14 @@ pub async fn refresh_stock_prices(
 
     // Fetch prices using Yahoo Finance (batched request, no API key needed)
     let result =
-        price_api::refresh_stock_prices_yahoo(&db, tickers, force_refresh.unwrap_or(false)).await?;
+        price_api::refresh_stock_prices_yahoo(db, tickers, force_refresh.unwrap_or(false)).await?;
 
     // Before the snapshot: it can fail, and neither a unit change nor a split is reported a
     // second time.
-    rebuild_history_after_quote_refresh(&app, &db, &recalc, &result);
+    rebuild_history_after_quote_refresh(&app, db, &recalc, &result);
 
     // Update portfolio snapshot
-    crate::commands::portfolio::update_todays_snapshot(&db).await?;
+    crate::commands::portfolio::update_todays_snapshot(db).await?;
 
     Ok(result)
 }
@@ -131,12 +134,15 @@ pub async fn refresh_crypto_prices(
     recalc: State<'_, HistoryRecalc>,
     force_refresh: Option<bool>,
 ) -> Result<Vec<CryptoPriceResult>> {
-    let result = price_api::refresh_crypto_prices(&db, force_refresh.unwrap_or(false)).await?;
+    // Pinned to the session open now: a refresh that outlives a lock or a profile switch (the
+    // demo profile closing, ADR 0037) fails instead of writing into the next database.
+    let db = &db.current_session()?;
+    let result = price_api::refresh_crypto_prices(db, force_refresh.unwrap_or(false)).await?;
 
     // Before the snapshot: it can fail, and a resolution is not reported a second time.
-    rebuild_crypto_history(&app, &db, &recalc, &result.resolved);
+    rebuild_crypto_history(&app, db, &recalc, &result.resolved);
 
-    crate::commands::portfolio::update_todays_snapshot(&db).await?;
+    crate::commands::portfolio::update_todays_snapshot(db).await?;
 
     Ok(result.updated)
 }
@@ -156,6 +162,9 @@ pub async fn refresh_dividends(
     db: State<'_, Database>,
     recalc: State<'_, HistoryRecalc>,
 ) -> Result<Vec<DividendResult>> {
+    // Pinned to the session open now: a refresh that outlives a lock or a profile switch (the
+    // demo profile closing, ADR 0037) fails instead of writing into the next database.
+    let db = &db.current_session()?;
     // Get all tickers from investments
     let tickers: Vec<String> = db.with_conn(|conn| {
         let mut stmt = conn.prepare("SELECT DISTINCT ticker FROM stock_investments")?;
@@ -171,8 +180,8 @@ pub async fn refresh_dividends(
     }
 
     // Fetch dividends using Yahoo Finance (no API key needed)
-    let refresh = price_api::refresh_dividends(&db, tickers).await?;
-    rebuild_full_history(&app, &db, &recalc, &refresh.new_splits);
+    let refresh = price_api::refresh_dividends(db, tickers).await?;
+    rebuild_full_history(&app, db, &recalc, &refresh.new_splits);
     Ok(refresh.results)
 }
 

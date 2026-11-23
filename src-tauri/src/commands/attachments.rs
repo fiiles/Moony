@@ -22,10 +22,9 @@ pub const CONVERSION_FINISHED_EVENT: &str = "attachments-conversion-finished";
 #[derive(Default)]
 pub struct AttachmentConversion(pub Arc<ConversionProgress>);
 
+/// The open profile's folder (ADR 0037): the demo's while the demo is open.
 fn data_dir(app: &AppHandle) -> Result<PathBuf> {
-    app.path()
-        .app_data_dir()
-        .map_err(|e| AppError::Internal(format!("Failed to get app data dir: {e}")))
+    crate::services::profile_dir::open_profile_dir(app)
 }
 
 /// Save a decrypted copy of an attachment to `dest_path` (chosen by the user in a save dialog).

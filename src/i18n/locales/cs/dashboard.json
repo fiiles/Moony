@@ -147,5 +147,14 @@
       "valuation": "přecenění {{name}}",
       "firstValuation": "první odhad {{name}}"
     }
+  },
+  "demoWelcome": {
+    "title": "Vítejte v ukázce",
+    "text": "Alex Meyer neexistuje. Má tři účty, akcie a krypto, byt s hypotékou a čtyři roky historie. Cokoli změňte, přidejte nebo smažte, ukázku jde kdykoli vrátit do původního stavu.",
+    "links": {
+      "cashflow": "Kam mizí peníze",
+      "stocks": "Jak si vedou akcie",
+      "projection": "Co bude za dvacet let"
+    }
   }
 }

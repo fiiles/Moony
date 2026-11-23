@@ -84,6 +84,8 @@ impl LocalApiServer {
     }
 
     pub async fn start(&self, db: Database, app: tauri::AppHandle) -> Result<()> {
+        // The demo's synthetic data never leaves the device through the MCP server (ADR 0037).
+        crate::services::profile_dir::ensure_not_demo()?;
         if self.is_running() {
             return Ok(());
         }

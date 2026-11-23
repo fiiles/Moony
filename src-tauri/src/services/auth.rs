@@ -9,6 +9,7 @@ use crate::models::user::{normalize_country, validate_main_currency, DEFAULT_MAI
 use crate::models::{InsertUserProfile, MenuPreferences, UpdateUserProfile, UserProfile};
 use crate::services::biometric_unlock;
 use crate::services::crypto;
+use crate::services::profile_dir;
 use crate::services::session_key::SessionKey;
 use crate::services::sync::join;
 use std::fs;
@@ -25,8 +26,8 @@ pub fn is_authenticated() -> bool {
     IS_AUTHENTICATED.load(Ordering::SeqCst)
 }
 
-/// Set authentication state
-fn set_authenticated(value: bool) {
+/// Set authentication state (also the demo profile's open and close, `commands::demo`)
+pub(crate) fn set_authenticated(value: bool) {
     IS_AUTHENTICATED.store(value, Ordering::SeqCst);
 }
 
@@ -122,6 +123,20 @@ pub fn setup_account(
     db.create_with_key(db_path.clone(), &master_key_hex)?;
 
     // Create user profile
+    db.with_conn(|conn| insert_user_profile(conn, data))?;
+
+    set_authenticated(true);
+
+    Ok(recovery_key)
+}
+
+/// Write the profile row of a new profile (the first-run setup, and the demo profile's Alex Meyer).
+/// Menu preferences default to all areas, the main currency to the default and is stored
+/// normalised, the language to English.
+pub(crate) fn insert_user_profile(
+    conn: &rusqlite::Connection,
+    data: InsertUserProfile,
+) -> Result<()> {
     let menu_prefs = data
         .menu_preferences
         .unwrap_or_else(MenuPreferences::all_enabled);
@@ -131,26 +146,20 @@ pub fn setup_account(
     let language = data.language.unwrap_or_else(|| "en".to_string());
     let exclude_re = data.exclude_personal_real_estate.unwrap_or(false);
 
-    db.with_conn(|conn| {
-        conn.execute(
-            "INSERT INTO user_profile (name, surname, email, menu_preferences, currency, language, exclude_personal_real_estate)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-            rusqlite::params![
-                data.name,
-                data.surname,
-                data.email,
-                menu_prefs_json,
-                currency,
-                language,
-                exclude_re as i32,
-            ],
-        )?;
-        Ok(())
-    })?;
-
-    set_authenticated(true);
-
-    Ok(recovery_key)
+    conn.execute(
+        "INSERT INTO user_profile (name, surname, email, menu_preferences, currency, language, exclude_personal_real_estate)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        rusqlite::params![
+            data.name,
+            data.surname,
+            data.email,
+            menu_prefs_json,
+            currency,
+            language,
+            exclude_re as i32,
+        ],
+    )?;
+    Ok(())
 }
 
 /// Unlock existing database with password
@@ -348,31 +357,7 @@ pub fn confirm_setup(
     db.create_with_key(db_path.clone(), &prepared.master_key_hex)?;
 
     // Create user profile
-    let menu_prefs = data
-        .menu_preferences
-        .unwrap_or_else(MenuPreferences::all_enabled);
-    let menu_prefs_json = serde_json::to_string(&menu_prefs)?;
-    let currency =
-        validate_main_currency(data.currency.as_deref().unwrap_or(DEFAULT_MAIN_CURRENCY))?;
-    let language = data.language.unwrap_or_else(|| "en".to_string());
-    let exclude_re = data.exclude_personal_real_estate.unwrap_or(false);
-
-    db.with_conn(|conn| {
-        conn.execute(
-            "INSERT INTO user_profile (name, surname, email, menu_preferences, currency, language, exclude_personal_real_estate)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-            rusqlite::params![
-                data.name,
-                data.surname,
-                data.email,
-                menu_prefs_json,
-                currency,
-                language,
-                exclude_re as i32,
-            ],
-        )?;
-        Ok(())
-    })?;
+    db.with_conn(|conn| insert_user_profile(conn, data))?;
 
     keep_session_key(session, &master_key);
     set_authenticated(true);
@@ -404,6 +389,7 @@ pub fn verify_password(db_path: &Path, password: &str) -> Result<()> {
 /// Phase 1: Prepare password change - verifies current password and generates new recovery key
 /// Returns the new recovery key so user can save it before we make changes
 pub fn prepare_change_password(db_path: &Path, current_password: &str) -> Result<String> {
+    profile_dir::ensure_not_demo()?;
     verify_password(db_path, current_password)?;
 
     // Generate new recovery key (don't persist yet, just return it)
@@ -419,6 +405,7 @@ pub fn confirm_change_password(
     new_password: &str,
     new_recovery_key: &str,
 ) -> Result<()> {
+    profile_dir::ensure_not_demo()?;
     validate_password(new_password)?;
 
     let data_dir = db_path
@@ -452,6 +439,7 @@ pub fn confirm_change_password(
 /// `new_password` is validated here already so the user is not asked to save a
 /// new recovery key for a recovery that `confirm_recover` would reject anyway.
 pub fn prepare_recover(db_path: &Path, recovery_key: &str, new_password: &str) -> Result<String> {
+    profile_dir::ensure_not_demo()?;
     validate_password(new_password)?;
 
     let data_dir = db_path
@@ -482,6 +470,7 @@ pub fn confirm_recover(
     new_password: &str,
     new_recovery_key: &str,
 ) -> Result<UserProfile> {
+    profile_dir::ensure_not_demo()?;
     validate_password(new_password)?;
 
     let data_dir = db_path
@@ -651,6 +640,7 @@ pub(crate) fn apply_profile_update(
 /// Delete entire account: the database, the attachments store, the key files and every other file
 /// of the account in its data folder
 pub fn delete_account(db: &Database, session: &SessionKey, db_path: &Path) -> Result<()> {
+    profile_dir::ensure_not_demo()?;
     set_authenticated(false);
     db.close();
     session.clear();
@@ -1886,6 +1876,84 @@ mod tests {
         assert!(
             !failures[0].contains(&*d.to_string_lossy()),
             "no data folder path in {failures:?}"
+        );
+    }
+
+    // ------------------------------------------------------------------
+    // The demo profile's gates (ADR 0037)
+    // ------------------------------------------------------------------
+
+    fn assert_not_in_demo<T: std::fmt::Debug>(result: Result<T>) {
+        match result {
+            Err(AppError::Auth(key)) => assert_eq!(key, profile_dir::NOT_IN_DEMO),
+            other => panic!("expected the demo gate, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn the_password_recovery_and_deletion_are_refused_in_the_demo() {
+        let dir = tempdir().expect("tempdir");
+        let db_path = write_key_files(dir.path(), "old-password");
+        let key_before = fs::read(dir.path().join("key.enc")).unwrap();
+        let session = SessionKey::default();
+        {
+            let _demo = profile_dir::demo_flag_for_test(true);
+            assert_not_in_demo(prepare_change_password(&db_path, "old-password"));
+            assert_not_in_demo(confirm_change_password(
+                &db_path,
+                "old-password",
+                "new-password",
+                RECOVERY_KEY,
+            ));
+            assert_not_in_demo(prepare_recover(&db_path, RECOVERY_KEY, "new-password"));
+            assert_not_in_demo(confirm_recover(
+                &Database::new(),
+                &session,
+                db_path.clone(),
+                RECOVERY_KEY,
+                "new-password",
+                RECOVERY_KEY,
+            ));
+            assert_not_in_demo(delete_account(&Database::new(), &session, &db_path));
+            assert_eq!(fs::read(dir.path().join("key.enc")).unwrap(), key_before);
+            assert!(dir.path().join("salt").exists(), "nothing was deleted");
+        }
+        // The same calls go through once the demo is closed.
+        prepare_change_password(&db_path, "old-password").expect("change password");
+        prepare_recover(&db_path, RECOVERY_KEY, "new-password").expect("recover");
+        delete_account(&Database::new(), &session, &db_path).expect("delete");
+        assert!(!dir.path().join("salt").exists());
+    }
+
+    #[test]
+    fn the_profile_row_insert_normalises_and_defaults() {
+        let conn = rusqlite::Connection::open_in_memory().expect("db");
+        crate::db::run_migrations(&conn).expect("migrations");
+        insert_user_profile(
+            &conn,
+            InsertUserProfile {
+                name: "Alex".into(),
+                surname: "Meyer".into(),
+                email: "alex.meyer@example.com".into(),
+                menu_preferences: None,
+                currency: Some("eur".into()),
+                language: None,
+                exclude_personal_real_estate: None,
+            },
+        )
+        .expect("insert");
+        let (currency, language, menu): (String, String, String) = conn
+            .query_row(
+                "SELECT currency, language, menu_preferences FROM user_profile",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .expect("row");
+        assert_eq!(currency, "EUR");
+        assert_eq!(language, "en");
+        assert_eq!(
+            menu,
+            serde_json::to_string(&MenuPreferences::all_enabled()).expect("prefs")
         );
     }
 }

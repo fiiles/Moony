@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { deviceSyncApi } from '@/lib/tauri-api';
+import { useAuth } from '@/hooks/use-auth';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { syncIsOn } from '@/utils/safe-copy';
 import { syncStatusRefetchInterval } from '@/utils/device-sync-refetch';
@@ -50,7 +51,10 @@ export function useDeviceSyncFeature(): boolean {
 
 /** The sync status; the backend pushes changes through `sync-status-changed` (see the events hook). */
 export function useDeviceSyncStatus() {
-  const enabled = useDeviceSyncFeature();
+  // Only while a profile's database is open (never on the first-run screens, the lock screen or
+  // during a demo transition, where the command can only fail)
+  const { profileOpen } = useAuth();
+  const enabled = useDeviceSyncFeature() && profileOpen;
   return useQuery({
     queryKey: ['device-sync-status'],
     queryFn: () => deviceSyncApi.getStatus(),

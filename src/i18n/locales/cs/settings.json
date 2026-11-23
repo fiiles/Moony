@@ -16,8 +16,11 @@
       "integrations": "Lokální MCP server pro AI asistenty.",
       "sync": "Zařízení drží krok, koncově šifrovaně.",
       "categorization": "Balíčky pravidel, kategorie a vlastní pravidla kategorizace.",
-      "account": "Smazání vašich dat z tohoto počítače."
-    }
+      "account": "Smazání vašich dat z tohoto počítače.",
+      "demo": "Co můžete s ukázkovými daty dělat a jak z nich přejít k vlastnímu profilu.",
+      "lockedInDemo": "V ukázce nedostupné."
+    },
+    "demo": "Ukázka"
   },
   "profile": {
     "title": "Profil",
@@ -278,6 +281,23 @@
     "kit": {
       "title": "Záchranná sada synchronizace",
       "text": "Vrátí synchronizovaná data, když přijdete o všechna zařízení. Jedna pro všechna zařízení."
+    }
+  },
+  "demo": {
+    "title": "Ukázková data",
+    "sub": "Smyšlený profil Alexe Meyera",
+    "subToday": "Smyšlený profil Alexe Meyera · otevřený dnes {{time}}",
+    "subYesterday": "Smyšlený profil Alexe Meyera · otevřený včera {{time}}",
+    "subOn": "Smyšlený profil Alexe Meyera · otevřený {{date}}",
+    "createHint": "Průvodce vás provede heslem, klíčem pro obnovu a prvním účtem. Ukázková data se do profilu nepřenesou.",
+    "resetHint": "Vrátí ukázku do stavu, v jakém jste ji poprvé otevřeli. Vaše změny v ukázce zmizí.",
+    "exitHint": "Vrátí vás na úvodní obrazovku. Změny v ukázce zůstanou a příště můžete pokračovat.",
+    "locked": {
+      "title": "{{section}} až ve vlastním profilu",
+      "security": "Ukázka nemá heslo ani zámek. Heslo, automatické zamykání a odemykání otiskem nastavíte ve vlastním profilu.",
+      "data": "Ukázku není třeba zálohovat, kdykoli ji vrátíte do původního stavu. Zálohy a obnova patří k vlastnímu profilu.",
+      "sync": "Smyšlená data se mezi zařízeními nesynchronizují. Synchronizaci zapnete ve vlastním profilu.",
+      "integrations": "Lokální MCP server je v ukázce vypnutý, aby asistent nepracoval se smyšlenými čísly jako s vašimi."
     }
   }
 }

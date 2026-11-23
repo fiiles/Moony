@@ -146,5 +146,14 @@
       "valuation": "Neubewertung von {{name}}",
       "firstValuation": "erste Schätzung von {{name}}"
     }
+  },
+  "demoWelcome": {
+    "title": "Willkommen im Beispiel",
+    "text": "Alex Meyer gibt es nicht. Er hat drei Konten, Aktien und Krypto, eine Wohnung mit Hypothek und vier Jahre Verlauf. Ändern, ergänzen oder löschen Sie, was Sie möchten – das Beispiel lässt sich jederzeit in den ursprünglichen Zustand zurücksetzen.",
+    "links": {
+      "cashflow": "Wohin das Geld geht",
+      "stocks": "Wie sich die Aktien entwickeln",
+      "projection": "Was in zwanzig Jahren sein wird"
+    }
   }
 }

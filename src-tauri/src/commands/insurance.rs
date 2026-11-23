@@ -6,7 +6,7 @@ use crate::models::{
     InsertInsuranceDocument, InsertInsurancePolicy, InsuranceDocument, InsurancePolicy, RealEstate,
 };
 use crate::services::{attachment_store, attachments, real_estate_photos};
-use tauri::{Manager, State};
+use tauri::State;
 
 /// Get all insurance policies
 #[tauri::command]
@@ -77,10 +77,8 @@ pub async fn delete_insurance(
     db: State<'_, Database>,
     id: String,
 ) -> Result<()> {
-    let dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| AppError::Internal(format!("Failed to get app data dir: {}", e)))?;
+    // The open profile's folder (ADR 0037).
+    let dir = crate::services::profile_dir::open_profile_dir(&app)?;
     db.with_conn(|conn| crate::services::insurance::delete_policy(conn, &dir, &id))
 }
 
@@ -200,10 +198,8 @@ pub async fn delete_insurance_document(
     db: State<'_, Database>,
     document_id: String,
 ) -> Result<()> {
-    let dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| AppError::Internal(format!("Failed to get app data dir: {}", e)))?;
+    // The open profile's folder (ADR 0037).
+    let dir = crate::services::profile_dir::open_profile_dir(&app)?;
     db.with_conn(|conn| {
         crate::services::attachments::delete_document(
             conn,

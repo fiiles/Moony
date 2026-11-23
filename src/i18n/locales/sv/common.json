@@ -403,7 +403,9 @@
     "setupNotPrepared": "Kontoskapandet avbröts. Gå tillbaka och skapa kontot igen.",
     "biometricInvalidated": "Biometrin har ändrats. Lås upp med lösenordet och slå på den igen.",
     "biometricCancelled": "Biometrisk upplåsning avbröts.",
-    "biometricFailed": "Verifieringen misslyckades. Lås upp med lösenordet."
+    "biometricFailed": "Verifieringen misslyckades. Lås upp med lösenordet.",
+    "notInDemo": "Det här är inte tillgängligt i exempelprofilen. Skapa en egen profil för att använda det.",
+    "demoUnavailable": "Exempelprofilen är inte tillgänglig nu. Den kan bara användas innan du skapar en egen profil."
   },
   "time": {
     "today": "I dag",
@@ -686,5 +688,23 @@
   "filterBadge": {
     "label": "Filter: {{labels}}",
     "clear": "Rensa filter"
+  },
+  "demo": {
+    "badge": "Exempel",
+    "sidebarText": "Du tittar på påhittade data. När du vill börja med din egen ekonomi:",
+    "createProfile": "Skapa en egen profil",
+    "accountRow": "Exempelprofil",
+    "exit": "Avsluta exemplet",
+    "topBadge": "Exempeldata",
+    "popoverTitle": "Du tittar på exempeldata",
+    "popoverText": "Alex Meyer är påhittad. Det du ändrar här stannar i exemplet och förs inte över till din profil.",
+    "reset": {
+      "title": "Återställ ursprungliga data",
+      "lead": "Exemplet går tillbaka till hur det var när du öppnade det första gången.",
+      "noticeTitle": "Dina ändringar i exemplet försvinner",
+      "noticeText": "Allt du har lagt till, ändrat eller tagit bort i exemplet återställs. Din egen profil påverkas inte.",
+      "confirm": "Återställ ursprungliga data",
+      "done": "Exemplet är tillbaka i ursprungligt skick"
+    }
   }
 }

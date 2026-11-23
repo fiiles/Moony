@@ -16,8 +16,11 @@
       "integrations": "Der lokale MCP-Server für KI-Assistenten.",
       "sync": "Hält Ihre Geräte auf dem gleichen Stand, Ende-zu-Ende-verschlüsselt.",
       "categorization": "Regelpakete, Kategorien und Ihre eigenen Kategorisierungsregeln.",
-      "account": "Ihre Daten von diesem Computer löschen."
-    }
+      "account": "Ihre Daten von diesem Computer löschen.",
+      "demo": "Was Sie mit den Beispieldaten tun können und wie Sie zu Ihrem eigenen Profil wechseln.",
+      "lockedInDemo": "Im Beispiel nicht verfügbar."
+    },
+    "demo": "Beispiel"
   },
   "profile": {
     "title": "Profil",
@@ -272,6 +275,23 @@
     "kit": {
       "title": "Sync-Wiederherstellungs-Kit",
       "text": "Holt Ihre synchronisierten Daten zurück, wenn alle Geräte verloren sind. Eines für alle Ihre Geräte."
+    }
+  },
+  "demo": {
+    "title": "Beispieldaten",
+    "sub": "Erfundenes Profil von Alex Meyer",
+    "subToday": "Erfundenes Profil von Alex Meyer · heute um {{time}} geöffnet",
+    "subYesterday": "Erfundenes Profil von Alex Meyer · gestern um {{time}} geöffnet",
+    "subOn": "Erfundenes Profil von Alex Meyer · geöffnet am {{date}}",
+    "createHint": "Der Assistent führt Sie durch Passwort, Wiederherstellungsschlüssel und erstes Konto. Beispieldaten werden nicht in das Profil übernommen.",
+    "resetHint": "Setzt das Beispiel in den Zustand zurück, in dem Sie es zum ersten Mal geöffnet haben. Ihre Änderungen im Beispiel gehen verloren.",
+    "exitHint": "Bringt Sie zum Startbildschirm zurück. Ihre Änderungen im Beispiel bleiben, und Sie können beim nächsten Mal weitermachen.",
+    "locked": {
+      "title": "{{section}} gibt es im eigenen Profil",
+      "security": "Das Beispiel hat kein Passwort und keine Sperre. Passwort, automatische Sperre und Entsperren per Fingerabdruck richten Sie im eigenen Profil ein.",
+      "data": "Das Beispiel braucht kein Backup, Sie können es jederzeit in den ursprünglichen Zustand zurücksetzen. Backups und Wiederherstellung gehören zum eigenen Profil.",
+      "sync": "Erfundene Daten werden nicht zwischen Geräten synchronisiert. Die Synchronisierung schalten Sie im eigenen Profil ein.",
+      "integrations": "Der lokale MCP-Server ist im Beispiel ausgeschaltet, damit ein Assistent erfundene Zahlen nicht für Ihre hält."
     }
   }
 }

@@ -44,6 +44,7 @@ and what it costs. ADRs are dated point-in-time records — facts in them
 | [0034](0034-device-sync-second-audit-fixes.md) | Device sync: the second security audit's fixes | 2026-11-20 | Accepted; amends 0026, 0027, 0029 and 0032 |
 | [0035](0035-device-sync-released-for-own-servers.md) | Device sync released, own servers only | 2026-11-22 | Accepted; turns on the flag of 0025, setup path of 0029 |
 | [0036](0036-stock-report-fifo-lots.md) | Stock transactions report: oldest-first lots derived on read | 2026-11-23 | Accepted; beside `cost_basis.rs`, conversion by 0012 |
+| [0037](0037-demo-profile-in-its-own-folder.md) | Demo profile: its own folder, a fixed key and gates in Rust | 2026-11-23 | Accepted |
 
 ## Rules
 
@@ -51,7 +52,7 @@ and what it costs. ADRs are dated point-in-time records — facts in them
   different. To change a decision, write a **new ADR** with the next number
   that links back to the one it supersedes. The only edit ever made to an old
   ADR is flipping its `## Status` to `Superseded by [NNNN](NNNN-....md)`.
-- Numbering is sequential and zero-padded; the next free number is `0037`.
+- Numbering is sequential and zero-padded; the next free number is `0038`.
 - Filename: `NNNN-short-kebab-title.md`. Add every new ADR to the index table
   above.
 - Keep each ADR to one page or less.

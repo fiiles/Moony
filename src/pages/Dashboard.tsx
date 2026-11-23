@@ -27,6 +27,7 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { GettingStartedCard } from '@/components/dashboard/GettingStartedCard';
+import { DemoWelcomeCard } from '@/components/dashboard/DemoWelcomeCard';
 import { AllocationRing } from '@/components/dashboard/AllocationRing';
 import { RecentMoves } from '@/components/dashboard/RecentMoves';
 import { UpcomingCard } from '@/components/dashboard/UpcomingCard';
@@ -116,23 +117,27 @@ export default function Dashboard() {
   const signedMoney = (value: number) =>
     fmt.money(value, reportCurrency, { signed: true, decimals: 0 });
 
+  // The demo profile's one-time welcome sits above the head (nothing outside the demo)
   const head = (
-    <PageHead
-      eyebrow={t('eyebrow')}
-      title={greeting}
-      description={asOf}
-      actions={
-        !isEmptyPortfolio && (
-          <TimePeriodSelector
-            value={selectedPeriod}
-            onChange={setSelectedPeriod}
-            options={CHART_PERIODS}
-            size="lg"
-            labels="long"
-          />
-        )
-      }
-    />
+    <>
+      <DemoWelcomeCard />
+      <PageHead
+        eyebrow={t('eyebrow')}
+        title={greeting}
+        description={asOf}
+        actions={
+          !isEmptyPortfolio && (
+            <TimePeriodSelector
+              value={selectedPeriod}
+              onChange={setSelectedPeriod}
+              options={CHART_PERIODS}
+              size="lg"
+              labels="long"
+            />
+          )
+        }
+      />
+    </>
   );
 
   if (isCheckingPortfolio) {

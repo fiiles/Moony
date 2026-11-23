@@ -71,7 +71,7 @@ pub(crate) fn sync_protects(today: i64, sync: &SyncStatus, content_to_upload: bo
 }
 
 /// `backup_stale` when the newest safe copy is older than 30 whole UTC days; with neither copy,
-/// after the profile's 14 days of grace. Key `backup_stale:<day of the newest safe copy>` or
+/// after the profile's 14 days of grace. Never while the demo profile is open. Key `backup_stale:<day of the newest safe copy>` or
 /// `backup_stale:never`; `since_day` = that day. `sync: None` (flag off, or the status could not
 /// be read) is the backup alone, as before sync.
 pub(super) fn backup(
@@ -79,6 +79,10 @@ pub(super) fn backup(
     today: i64,
     sync: Option<&SyncStatus>,
 ) -> Result<Option<Milestone>> {
+    // The demo cannot make a backup, so it is never asked for one (ADR 0037).
+    if crate::services::profile_dir::demo_open() {
+        return Ok(None);
+    }
     let last_backup: Option<i64> = conn
         .query_row(
             "SELECT value FROM app_config WHERE key = ?1",
@@ -231,6 +235,24 @@ mod tests {
         )
         .unwrap();
         assert!(build(&conn, today, None).unwrap().is_empty());
+    }
+
+    #[test]
+    fn the_demo_profile_is_never_asked_for_a_backup() {
+        let conn = setup();
+        conn.execute(
+            "INSERT INTO user_profile (name, created_at) VALUES ('Alex', ?1)",
+            [day(2025, 1, 1)],
+        )
+        .unwrap();
+        let today = day(2026, 10, 5);
+        {
+            let _demo = crate::services::profile_dir::demo_flag_for_test(true);
+            assert!(backup(&conn, today, None).unwrap().is_none());
+            assert!(build(&conn, today, None).unwrap().is_empty());
+        }
+        let list = build(&conn, today, None).unwrap();
+        assert_eq!(list[0].key, "backup_stale:never", "a real profile is asked");
     }
 
     #[test]

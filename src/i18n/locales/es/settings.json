@@ -16,8 +16,11 @@
       "integrations": "El servidor MCP local para asistentes de IA.",
       "sync": "Mantiene tus dispositivos al día, con cifrado de extremo a extremo.",
       "categorization": "Paquetes de reglas, categorías y tus propias reglas de categorización.",
-      "account": "Eliminar tus datos de este ordenador."
-    }
+      "account": "Eliminar tus datos de este ordenador.",
+      "demo": "Qué puedes hacer con los datos de ejemplo y cómo pasar a tu propio perfil.",
+      "lockedInDemo": "No disponible en el ejemplo."
+    },
+    "demo": "Ejemplo"
   },
   "profile": {
     "title": "Perfil",
@@ -276,6 +279,23 @@
     "kit": {
       "title": "Kit de recuperación de sincronización",
       "text": "Recupera tus datos sincronizados cuando se pierden todos los dispositivos. Uno solo para todos tus dispositivos."
+    }
+  },
+  "demo": {
+    "title": "Datos de ejemplo",
+    "sub": "Perfil ficticio de Alex Meyer",
+    "subToday": "Perfil ficticio de Alex Meyer · abierto hoy a las {{time}}",
+    "subYesterday": "Perfil ficticio de Alex Meyer · abierto ayer a las {{time}}",
+    "subOn": "Perfil ficticio de Alex Meyer · abierto el {{date}}",
+    "createHint": "El asistente te guía por la contraseña, la clave de recuperación y la primera cuenta. Los datos de ejemplo no pasan al perfil.",
+    "resetHint": "Devuelve el ejemplo al estado en que lo abriste por primera vez. Se perderán tus cambios en el ejemplo.",
+    "exitHint": "Te lleva a la pantalla de inicio. Tus cambios en el ejemplo se conservan y la próxima vez podrás continuar.",
+    "locked": {
+      "title": "{{section}}, en tu propio perfil",
+      "security": "El ejemplo no tiene contraseña ni bloqueo. La contraseña, el bloqueo automático y el desbloqueo con huella se configuran en tu propio perfil.",
+      "data": "El ejemplo no necesita copias de seguridad: puedes devolverlo a su estado original en cualquier momento. Las copias y la restauración son parte de tu propio perfil.",
+      "sync": "Los datos inventados no se sincronizan entre dispositivos. La sincronización se activa en tu propio perfil.",
+      "integrations": "El servidor MCP local está desactivado en el ejemplo para que ningún asistente tome cifras inventadas por las tuyas."
     }
   }
 }

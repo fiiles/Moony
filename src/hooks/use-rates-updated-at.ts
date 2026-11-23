@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { portfolioApi } from '@/lib/tauri-api';
+import { useAuth } from '@/hooks/use-auth';
 
 /**
  * When the exchange rates were last refreshed (unix seconds), or null when
@@ -8,9 +9,12 @@ import { portfolioApi } from '@/lib/tauri-api';
  * is accurate to about an hour — enough for a "rates of 2 Oct" tooltip.
  */
 export function useRatesUpdatedAt(): number | null {
+  const { profileOpen } = useAuth();
   const { data, dataUpdatedAt } = useQuery({
     queryKey: ['price-status'],
     queryFn: () => portfolioApi.getPriceStatus(),
+    // Only while a profile's database is open
+    enabled: profileOpen,
     staleTime: 30000,
   });
   const ageHours = data?.exchangeRatesAgeHours;

@@ -145,5 +145,14 @@
       "valuation": "{{name}}重新估值",
       "firstValuation": "{{name}}首次估值"
     }
+  },
+  "demoWelcome": {
+    "title": "欢迎使用示例",
+    "text": "Alex Meyer 并不存在。他有三个账户、股票和加密货币、一套带房贷的公寓，以及四年的历史记录。您可以随意修改、添加或删除，示例随时都能恢复到原始状态。",
+    "links": {
+      "cashflow": "钱都去哪儿了",
+      "stocks": "股票表现如何",
+      "projection": "二十年后会怎样"
+    }
   }
 }

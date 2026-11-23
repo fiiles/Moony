@@ -208,6 +208,28 @@ async fn refresh_dividend_events(
     })
 }
 
+/// The per-share dividends (in the stored unit) and the splits Yahoo reports for `ticker` over
+/// `[start, end]` (unix seconds), read exactly as [`refresh_dividend_events`] reads them, without
+/// storing anything. Used by the demo price refresh (`services::demo`).
+pub async fn get_dividend_history_yahoo(
+    ticker: &str,
+    start: i64,
+    end: i64,
+) -> Result<(Vec<DividendEvent>, Vec<DetectedSplit>)> {
+    let provider = yahoo_connector()
+        .map_err(|e| AppError::ExternalApi(format!("Yahoo connector failed: {e}")))?;
+    let start = time::OffsetDateTime::from_unix_timestamp(start)
+        .map_err(|e| AppError::ExternalApi(format!("Invalid dividend range: {e}")))?;
+    let end = time::OffsetDateTime::from_unix_timestamp(end)
+        .map_err(|e| AppError::ExternalApi(format!("Invalid dividend range: {e}")))?;
+    let response = provider
+        .get_quote_history(ticker, start, end)
+        .await
+        .map_err(|e| AppError::ExternalApi(format!("Yahoo dividend history failed: {e}")))?;
+    let unit = unit_of(&response, ticker);
+    Ok((chart_dividends(&response, &unit), chart_splits(&response)))
+}
+
 /// The splits of a chart response as whole numbers on the exchange's calendar day (spec D2). A
 /// split `n:d` turns one old share into `n/d` new ones: AAPL 2020-08-31 is `4, 1, "4:1"` (the
 /// crate's doc comment on `Split` has it the other way round). Yahoo dates a split at the

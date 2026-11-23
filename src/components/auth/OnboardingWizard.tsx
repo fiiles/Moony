@@ -18,7 +18,7 @@ import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Check, Info, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Check, Info, RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -98,6 +98,21 @@ interface OnboardingWizardProps {
   preview?: boolean;
   /** Phone: the recovery-key actions are 48 pt buttons (`RecoveryKeyBox touch`); the rest stays as is. */
   touch?: boolean;
+  /** Desktop, entered from the choice screen's "Připojit k synchronizaci": start on the join path. */
+  entryPath?: 'new' | 'join';
+  /**
+   * Desktop (ADR 0037): the first step's back control, back to the choice screen ("Zpět") or into
+   * the demo ("Zpět do ukázky", with `note` under it). Absent, the step has none, as on the phone.
+   */
+  back?: WizardBack;
+}
+
+export interface WizardBack {
+  label: string;
+  onBack: () => void;
+  pending?: boolean;
+  /** One sentence under the step's buttons. */
+  note?: string;
 }
 
 export function OnboardingWizard({
@@ -105,6 +120,8 @@ export function OnboardingWizard({
   onFinished,
   preview = true,
   touch = false,
+  entryPath = 'new',
+  back,
 }: OnboardingWizardProps) {
   const { t } = useTranslation('auth');
   const { t: tc } = useTranslation('common');
@@ -122,8 +139,8 @@ export function OnboardingWizard({
   }, []);
 
   const systemRegion = useMemo(() => regionFromLocale(navigator.language), []);
-  const [step, setStep] = useState<OnboardingStep>('welcome');
-  const [path, setPath] = useState<OnboardingPath>('new');
+  const [step, setStep] = useState<OnboardingStep>(entryPath === 'join' ? 'account' : 'welcome');
+  const [path, setPath] = useState<OnboardingPath>(entryPath);
   /**
    * Join path: the device password typed on the account step, kept in memory only for Připojení
    * (a pairing starts with it, a Kit join sends it) and dropped when that step ends either way.
@@ -464,12 +481,31 @@ export function OnboardingWizard({
                   </p>
                 </div>
               </div>
-              {nav(
-                null,
-                <Button data-testid="onboarding-continue" onClick={() => setStep('account')}>
+              <div className="mt-2 flex items-center justify-between">
+                {back ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={back.onBack}
+                    disabled={back.pending}
+                    loading={back.pending}
+                    data-testid="onboarding-back-out"
+                  >
+                    <ArrowLeft aria-hidden />
+                    {back.label}
+                  </Button>
+                ) : (
+                  <span />
+                )}
+                <Button
+                  data-testid="onboarding-continue"
+                  disabled={back?.pending}
+                  onClick={() => setStep('account')}
+                >
                   {tc('buttons.continue')}
                 </Button>
-              )}
+              </div>
+              {back?.note && <p className="m-0 mt-3 text-micro font-500 text-ink-4">{back.note}</p>}
               {/* Moving from another device or reinstalling: join sync or skip the setup entirely */}
               <RestoreBackup fresh>
                 {(pick, busy) => {

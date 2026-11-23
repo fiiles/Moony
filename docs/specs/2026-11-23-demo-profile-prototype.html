@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Moony · Ukázkový profil</title>
+<!-- Static Czech design prototype of the bundled demo profile (2026-11-23). Fictional data, no API calls.
+     Scenes: first run (choice), inside the demo (marking, profile menu, settings), the way to an own profile, next launch.
+     Marking: the owner chose the sidebar card + top-bar badge on 2026-11-23; the top strip variant was dropped.
+     Design contract: ../design-system/{tokens,moony}.css (linked, not inlined, so it follows the design system).
+     Font: Inter from node_modules (falls back to the system font). Icons: Lucide (ISC) via icons.js.
+     The dark bar on top and the notes drawer are prototype chrome, not part of the app.
+     Production needs all ten locales. -->
+<link rel="stylesheet" href="../../node_modules/@fontsource-variable/inter/index.css">
+<link rel="stylesheet" href="../design-system/moony.css">
+<style>
+  :root { --pbar: 44px; }
+
+  /* ---- Prototype chrome (not part of the app) ---- */
+  .pbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 6px; height: var(--pbar); padding: 0 12px; background: #1b1a17; color: #d9d6cf; font-size: 11px; font-weight: 600; }
+  .pbar__label { margin-right: 6px; color: #8f8c84; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
+  .pbar button { height: 28px; padding: 0 10px; border: 0; border-radius: 6px; background: none; color: inherit; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .pbar button:hover { background: rgba(255,255,255,.08); color: #fff; }
+  .pbar button.is-active { background: #f1efe9; color: #1b1a17; }
+  .pbar__sp { flex: 1; }
+  .notes { position: fixed; top: var(--pbar); right: 0; bottom: 0; z-index: 19; width: 360px; padding: 20px 20px 28px; overflow-y: auto; border-left: 1px solid var(--line); background: var(--paper); box-shadow: var(--sh-modal); transform: translateX(105%); transition: transform var(--t-base) var(--ease); }
+  .notes.is-open { transform: none; }
+  .notes h2 { margin: 0 0 4px; font-size: 16px; font-weight: 650; letter-spacing: -0.04em; }
+  .notes h3 { margin: 22px 0 8px; color: var(--ink-4); font-size: var(--fs-eyebrow); font-weight: var(--fw-eyebrow); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; }
+  .notes p, .notes li { color: var(--ink-2); font-size: 12px; line-height: 1.5; }
+  .notes ul, .notes ol { margin: 0; padding-left: 17px; display: grid; gap: 7px; }
+  .notes b { color: var(--ink); font-weight: 650; }
+
+  /* ---- Scenes ---- */
+  .scene { display: none; }
+  .scene.is-on { display: block; }
+  .app { min-height: calc(100vh - var(--pbar)); }
+  .sidebar { top: var(--pbar); height: calc(100vh - var(--pbar)); }
+
+  /* ---- First run: the choice ---- */
+  .first { position: relative; display: grid; place-items: center; min-height: calc(100vh - var(--pbar)); padding: 76px 24px 64px; }
+  .first__lang { position: absolute; top: 18px; right: 24px; }
+  .first__inner { width: 100%; max-width: 840px; }
+  .first__brand { display: flex; align-items: center; justify-content: center; gap: 11px; margin-bottom: 30px; }
+  .first__brand b { display: block; font-size: 18px; font-weight: 650; letter-spacing: -0.08em; line-height: 1.15; }
+  .first__brand small { display: block; color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; }
+  .first h1 { font-size: 30px; font-weight: 650; letter-spacing: -0.05em; text-align: center; }
+  .first__lead { max-width: 540px; margin: 10px auto 32px; color: var(--ink-3); font-size: 14px; line-height: 1.5; text-align: center; }
+  .paths { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .path { display: flex; flex-direction: column; padding: 24px 24px 22px; }
+  .path h2 { margin: 0 0 6px; font-size: 19px; font-weight: 650; letter-spacing: -0.045em; }
+  .path > p { margin: 0 0 16px; color: var(--ink-3); font-size: 13px; line-height: 1.5; }
+  .peek { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding: 11px 12px; border-radius: var(--r-3); background: var(--well); }
+  .peek__ic { display: grid; place-items: center; flex: none; width: 29px; height: 29px; border-radius: 50%; background: var(--well-3); color: var(--ink-2); }
+  .peek b { display: block; color: var(--ink); font-size: var(--fs-table); font-weight: 650; }
+  .peek small { display: block; margin-top: 2px; color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; }
+  .peek__val { margin-left: auto; color: var(--ink); font-size: 15px; font-weight: 600; letter-spacing: -0.04em; text-align: right; }
+  .peek__val small { letter-spacing: 0; }
+  .path ul { display: grid; gap: 8px; margin: 0 0 22px; padding: 0; list-style: none; color: var(--ink-2); font-size: var(--fs-table); font-weight: 500; }
+  .path li { display: flex; gap: 8px; align-items: flex-start; }
+  .path li .ic { flex: none; margin-top: 1px; color: var(--ink-4); }
+  .path .btn { height: 40px; margin-top: auto; font-size: 13px; }
+  .path__under { min-height: 18px; margin: 10px 0 0; text-align: center; font-size: var(--fs-caption); }
+  .first__other { margin: 22px 0 0; color: var(--ink-3); font-size: var(--fs-caption); font-weight: 500; text-align: center; }
+  .first__other .link { margin-left: 12px; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+  .first__meta { position: absolute; left: 0; right: 0; bottom: 18px; color: var(--ink-5); font-size: var(--fs-micro); font-weight: 500; text-align: center; }
+
+  /* ---- The demo motif: a dashed outline means "sample, not yours" ---- */
+  .avatar--demo { background: none; box-shadow: none; border: 1px dashed var(--ink-5); color: var(--ink-2); }
+  .demo-card { margin-bottom: 10px; padding: 12px 12px 12px; border: 1px dashed var(--line-hover); border-radius: var(--r-3); }
+  .demo-card .badge { margin-bottom: 8px; }
+  .demo-card p { margin: 0 0 10px; color: var(--ink-3); font-size: var(--fs-caption); font-weight: 500; line-height: 1.45; }
+  .demo-card .btn { width: 100%; }
+  .tb-right { display: flex; align-items: center; gap: 16px; flex: none; }
+  .tb-anchor { position: relative; display: inline-flex; }
+  .tb-demo { border: 1px dashed var(--line-hover); background: none; color: var(--ink-2); cursor: pointer; }
+  .tb-demo:hover { border-color: var(--ink-4); color: var(--ink); }
+  .tb-sep { width: 1px; height: 14px; background: var(--line-strong); }
+  .pop { position: absolute; top: calc(100% + 8px); right: 0; z-index: 6; display: none; width: 320px; padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); box-shadow: var(--sh-pop); color: var(--ink-2); font-size: var(--fs-table); text-align: left; }
+  .pop.is-open { display: block; }
+  .pop b { display: block; margin-bottom: 4px; color: var(--ink); font-size: 13px; font-weight: 650; }
+  .pop p { margin: 0 0 12px; line-height: 1.5; color: var(--ink-3); }
+  .pop .actions { justify-content: flex-end; }
+
+  .account-wrap { position: relative; }
+  .account-menu { left: 0; right: 0; bottom: calc(100% + 2px); display: none; }
+  .account-menu.is-open { display: block; }
+
+  /* ---- Overview in the demo ---- */
+  .welcome { position: relative; display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: flex-start; margin-bottom: 17px; padding: 16px 18px; border: 1px dashed var(--line-hover); border-radius: var(--r-4); background: var(--well); }
+  .welcome h3 { margin-bottom: 4px; }
+  .welcome p { max-width: 720px; margin: 0 0 12px; color: var(--ink-3); font-size: 13px; line-height: 1.5; }
+  .welcome .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .welcome .chip { cursor: pointer; }
+  .welcome .chip:hover { border-color: var(--ink-4); color: var(--ink); }
+  .welcome .chip small { color: var(--ink-4); font-weight: 500; }
+  .moves .table__head, .moves .table__row { grid-template-columns: 62px 1fr 150px 120px; }
+  .alloc { display: flex; gap: 22px; align-items: center; padding: 4px 21px 22px; }
+  .alloc__list { flex: 1; display: grid; gap: 0; }
+
+  /* ---- Settings in the demo ---- */
+  .settings { display: grid; grid-template-columns: 216px 1fr; gap: 28px; align-items: start; }
+  .snav { display: grid; gap: 3px; }
+  .snav button { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 34px; padding: 0 11px; border: 0; border-radius: var(--r-2); background: none; color: var(--ink-2); font-size: 13px; font-weight: 600; text-align: left; }
+  .snav button:hover { background: var(--ink-hover); color: var(--ink); }
+  .snav button.is-active { background: var(--paper); box-shadow: var(--sh-1); color: var(--ink); }
+  .snav button .ic { margin-left: auto; color: var(--ink-5); }
+  .snav button.is-locked { color: var(--ink-4); }
+  .srow { display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: center; padding: 16px 21px; border-top: 1px solid var(--line-soft); }
+  .srow b { display: block; color: var(--ink); font-size: 13px; font-weight: 650; }
+  .srow small { display: block; margin-top: 3px; color: var(--ink-3); font-size: var(--fs-table); line-height: 1.45; }
+
+  /* ---- Wizard (existing first-run wizard, step 1) ---- */
+  .wiz { display: grid; grid-template-columns: 1fr 1fr; min-height: calc(100vh - var(--pbar)); }
+  .wiz__form { display: flex; flex-direction: column; justify-content: center; padding: 48px 56px; }
+  .wiz__inner { width: 100%; max-width: 480px; margin: 0 auto; }
+  .wiz__brand { display: flex; align-items: center; gap: 11px; margin-bottom: 36px; }
+  .wiz__brand b { display: block; font-size: 18px; font-weight: 650; letter-spacing: -0.08em; line-height: 1.15; }
+  .wiz__brand small { display: block; color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; }
+  .stepper { display: flex; gap: 4px; margin: 0 0 26px; padding: 0; list-style: none; }
+  .stepper li { flex: 1; padding-bottom: 8px; border-bottom: 2px solid var(--well-3); color: var(--ink-4); font-size: var(--fs-micro); font-weight: 650; letter-spacing: .02em; }
+  .stepper li.is-current { border-color: var(--ink); color: var(--ink); }
+  .wiz h1 { font-size: 26px; font-weight: 650; letter-spacing: -0.05em; }
+  .wiz__lead { margin: 8px 0 24px; color: var(--ink-3); line-height: 1.5; }
+  .points { display: grid; gap: 8px; margin-bottom: 18px; padding: 14px 16px; border-radius: var(--r-3); background: var(--well); color: var(--ink-2); font-size: var(--fs-caption); }
+  .points div { display: flex; gap: 8px; align-items: flex-start; }
+  .points .ic { flex: none; margin-top: 1px; color: var(--gain); }
+  .points b { color: var(--ink); font-weight: 650; }
+  .wiz__nav { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
+  .wiz__note { margin: 12px 0 0; color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; }
+  .wiz__note:empty { display: none; }
+  .wiz__from { margin: 16px 0 0; padding-top: 16px; border-top: 1px solid var(--line-soft); color: var(--ink-3); font-size: var(--fs-caption); font-weight: 500; }
+  .wiz__links { display: flex; flex-wrap: wrap; gap: 4px 20px; margin-top: 6px; }
+  .wiz__links .link { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+  .wiz__preview { position: relative; display: grid; place-items: center; padding: 40px; border-left: 1px solid var(--line); background: linear-gradient(160deg, var(--well), var(--canvas)); }
+  .mini { width: 100%; max-width: 420px; padding: 18px; }
+  .mini .eyebrow { margin-bottom: 6px; }
+  .mini__num { display: block; font-size: 30px; font-weight: 580; letter-spacing: -0.07em; color: var(--ink-5); }
+  .mini__bars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; }
+  .mini__bars i { display: block; height: 44px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+  .wiz__cap { position: absolute; left: 0; right: 0; bottom: 28px; color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; text-align: center; }
+</style>
+</head>
+<body>
+
+<!-- ================= Prototype chrome ================= -->
+<div class="pbar">
+  <span class="pbar__label">Prototyp</span>
+  <button data-scene="first" class="is-active">1 První spuštění</button>
+  <button data-scene="demo">2 V ukázce</button>
+  <button data-scene="menu">3 Nabídka profilu</button>
+  <button data-scene="settings">4 Nastavení</button>
+  <button data-scene="wizard">5 Vlastní profil</button>
+  <button data-scene="again">6 Další spuštění</button>
+  <span class="pbar__sp"></span>
+  <button id="theme-btn">Tmavý</button>
+  <button id="notes-btn">Poznámky</button>
+</div>
+
+<aside class="notes" id="notes"></aside>
+
+<!-- ================= Scene: first run, the choice ================= -->
+<section class="scene is-on" id="scene-first">
+  <div class="first">
+    <button type="button" class="btn btn--sm first__lang" id="lang-btn"></button>
+    <div class="first__inner">
+      <div class="first__brand"><i class="moon"></i><div><b>moony</b><small>První spuštění</small></div></div>
+      <h1>Jak chcete začít?</h1>
+      <p class="first__lead">Moony si můžete nejdřív projít na smyšlených datech, nebo si rovnou založit vlastní profil. Z ukázky k vlastnímu profilu přejdete kdykoli.</p>
+
+      <div class="paths">
+        <article class="card path">
+          <h2>Založit vlastní profil</h2>
+          <p>Šifrovaná databáze v tomto počítači, kterou otevře jen vaše heslo. Průvodce zabere asi tři minuty.</p>
+          <div class="peek"><span class="peek__ic" data-ic="lock"></span><div><b>Jen u vás</b><small>AES-256 · bez cloudu · bez účtu u nás</small></div></div>
+          <ul>
+            <li data-li>Heslo a klíč pro obnovu</li>
+            <li data-li>Hlavní měna a co chcete sledovat</li>
+            <li data-li>První účet nebo import výpisu z banky</li>
+            <li data-li>Připojit další zařízení můžete později</li>
+          </ul>
+          <button type="button" class="btn btn--primary" data-go="wizard-fresh">Založit profil</button>
+          <p class="path__under"></p>
+        </article>
+
+        <article class="card path">
+          <h2 id="demo-title">Vyzkoušet na ukázkových datech</h2>
+          <p id="demo-text">Hotový profil smyšlené osoby s několikaletou historií, v eurech a v jazyce, který máte zvolený. Bez hesla a bez nastavování.</p>
+          <div class="peek"><i class="avatar avatar--demo">AM</i><div><b>Alex Meyer</b><small>smyšlená osoba · 4 roky historie · v eurech</small></div><span class="peek__val num">284 600 €<small>čisté jmění</small></span></div>
+          <ul>
+            <li data-li>Účty, akcie, krypto, byt s hypotékou, pojištění</li>
+            <li data-li>Všechno můžete měnit, přidávat i mazat</li>
+            <li data-li>Do vašeho profilu se z ukázky nic nepřenese</li>
+            <li data-li>Kurzy akcií a měn se stahují z Yahoo Finance a ECB</li>
+          </ul>
+          <button type="button" class="btn" id="demo-open">Otevřít ukázku</button>
+          <p class="path__under"><button type="button" class="link" id="demo-restart" hidden>Začít znovu s původními daty</button></p>
+        </article>
+      </div>
+
+      <p class="first__other">Už Moony používáte na jiném zařízení?<button type="button" class="link" data-toast="Otevře průvodce připojením k synchronizaci (beze změny)">Připojit k synchronizaci</button><button type="button" class="link" data-toast="Otevře výběr souboru se zálohou (beze změny)">Obnovit ze zálohy</button></p>
+    </div>
+    <div class="first__meta">Moony 1.5.0 · AES-256 (SQLCipher) · data zůstávají v tomto počítači</div>
+  </div>
+</section>
+
+<!-- ================= Scene: inside the demo (Overview / Settings) ================= -->
+<section class="scene" id="scene-app">
+  <div class="app">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main>
+      <div class="page">
+        <div class="topbar">
+          <nav class="crumb" id="crumb"></nav>
+          <div class="tb-right">
+            <span class="tb-anchor">
+              <button type="button" class="badge tb-demo" id="tb-demo">Ukázková data</button>
+              <div class="pop" id="tb-pop">
+                <b>Prohlížíte ukázková data</b>
+                <p>Alex Meyer je smyšlený. Co tady změníte, zůstane jen v ukázce a do vašeho profilu se nepřenese.</p>
+                <div class="actions"><button type="button" class="btn btn--sm" data-open="m-reset">Obnovit původní data</button><button type="button" class="btn btn--sm btn--primary" data-go="wizard">Založit vlastní profil</button></div>
+              </div>
+            </span>
+            <span class="tb-sep"></span>
+            <span class="status status--fresh">Aktuální</span>
+          </div>
+        </div>
+
+        <!-- Overview -->
+        <div id="page-overview">
+          <div class="welcome" id="welcome">
+            <span class="badge badge--outline">Ukázka</span>
+            <div>
+              <h3>Vítejte v ukázce</h3>
+              <p>Alex Meyer neexistuje. Má tři účty, akcie a krypto, byt s hypotékou a čtyři roky historie. Cokoli změňte, přidejte nebo smažte, ukázku jde kdykoli vrátit do původního stavu.</p>
+              <div class="chips">
+                <button type="button" class="chip" data-toast="Otevře Cashflow">Kam mizí peníze <small>Cashflow</small></button>
+                <button type="button" class="chip" data-toast="Otevře Analýzu akcií">Jak si vedou akcie <small>Analýza akcií</small></button>
+                <button type="button" class="chip" data-toast="Otevře Projekci">Co bude za dvacet let <small>Projekce</small></button>
+              </div>
+            </div>
+            <button type="button" class="modal__close" id="welcome-close" aria-label="Zavřít"></button>
+          </div>
+
+          <div class="page-head">
+            <div><div class="eyebrow">Pondělí 23. listopadu 2026</div><h1>Dobrý den, Alexi</h1></div>
+            <div class="actions"><button type="button" class="btn" data-toast="V ukázce funguje stejně jako ve vašem profilu"><span data-ic="refresh-cw"></span>Aktualizovat kurzy</button></div>
+          </div>
+
+          <section class="card hero" style="margin-bottom:17px">
+            <div class="hero__head">
+              <div><div class="hero__label">Čisté jmění</div><span class="hero__value num">284 600 €</span><div class="hero__delta gain" id="hero-delta"></div></div>
+              <div class="seg"><button class="seg__btn">1M</button><button class="seg__btn">3M</button><button class="seg__btn is-active">1R</button><button class="seg__btn">Vše</button></div>
+            </div>
+            <div class="chart" id="chart-hero" style="margin:16px -4px 0;height:170px"></div>
+            <div class="chart__axis" id="axis-hero"></div>
+          </section>
+
+          <div class="stats">
+            <div class="stat"><div class="stat__label">Na účtech</div><span class="stat__value">18 420 €</span><span class="stat__note">3 účty</span></div>
+            <div class="stat"><div class="stat__label">Investice</div><span class="stat__value">96 300 €</span><span class="stat__note">akcie, krypto, dluhopisy</span></div>
+            <div class="stat"><div class="stat__label">Nemovitosti</div><span class="stat__value">312 000 €</span><span class="stat__note">byt, 62 m²</span></div>
+            <div class="stat"><div class="stat__label">Závazky</div><span class="stat__value">− 142 120 €</span><span class="stat__note">hypotéka do 2044</span></div>
+          </div>
+
+          <div class="two-col">
+            <section class="card card--table moves">
+              <div class="card__head"><div><h2 class="card__title">Poslední pohyby</h2><p class="card__sub">Platby, obchody a dividendy z posledních dní</p></div></div>
+              <div class="table" id="moves"></div>
+            </section>
+            <section class="card">
+              <div class="card__head"><div><h2 class="card__title">Rozložení aktiv</h2><p class="card__sub">426 720 € celkem</p></div></div>
+              <div class="alloc"><div class="ring" id="ring"><div class="ring__center">aktiva<b>427 tis. €</b></div></div><div class="alloc__list" id="alloc-list"></div></div>
+            </section>
+          </div>
+        </div>
+
+        <!-- Settings -->
+        <div id="page-settings" hidden>
+          <div class="page-head"><div><div class="eyebrow">Nastavení</div><h1 id="set-title">Ukázka</h1><p id="set-lead">Co můžete s ukázkovými daty dělat a jak z nich přejít k vlastnímu profilu.</p></div></div>
+          <div class="settings">
+            <nav class="snav" id="snav"></nav>
+            <div id="set-body"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- ================= Scene: the existing wizard, step 1 ================= -->
+<section class="scene" id="scene-wizard">
+  <div class="wiz">
+    <div class="wiz__form">
+      <div class="wiz__inner">
+        <div class="wiz__brand"><i class="moon"></i><div><b>moony</b><small>První spuštění</small></div></div>
+        <ol class="stepper"><li class="is-current">1 · Soukromí</li><li>2 · Účet</li><li>3 · Klíč</li><li>4 · Co sledovat</li><li>5 · První účet</li></ol>
+        <h1>Vaše data zůstávají u vás</h1>
+        <p class="wiz__lead">Moony ukládá vše do šifrované databáze v tomto počítači. Žádný cloud, žádný účet u nás.</p>
+        <div class="points">
+          <div><span data-ic="check" data-size="14"></span><span><b>Šifrování AES-256</b> – databázi i přiložené dokumenty a fotky otevře jen vaše heslo.</span></div>
+          <div><span data-ic="check" data-size="14"></span><span><b>Bez cloudu</b> – data opustí tento počítač, jen když zapnete synchronizaci.</span></div>
+          <div><span data-ic="check" data-size="14"></span><span><b>Tržní data</b> – stahují se jen kurzy akcií, měn a kryptoměn, které sledujete.</span></div>
+        </div>
+        <div class="row-2">
+          <div class="field"><div class="field__label">Hlavní měna</div><div class="select-wrap"><select class="select"><option>CZK – česká koruna</option><option>EUR – euro</option></select><span data-ic="chevron-down" data-size="14"></span></div><div class="field__hint">Součty a grafy se zobrazují v této měně.</div></div>
+          <div class="field"><div class="field__label">Země bankovnictví</div><div class="select-wrap"><select class="select"><option>Česko</option><option>Jiná / není v seznamu</option></select><span data-ic="chevron-down" data-size="14"></span></div><div class="field__hint">Podle země se vyberou pravidla kategorizace.</div></div>
+        </div>
+        <div class="wiz__nav">
+          <button type="button" class="btn btn--ghost" id="wiz-back"></button>
+          <button type="button" class="btn btn--primary" data-toast="Pokračuje krokem Účet (beze změny)">Pokračovat</button>
+        </div>
+        <p class="wiz__note" id="wiz-from"></p>
+        <p class="wiz__from">Už Moony používáte na jiném zařízení?<span class="wiz__links"><button type="button" class="link" data-toast="Připojení k synchronizaci, stejně jako dnes">Připojit k synchronizaci</button><button type="button" class="link" data-toast="Výběr souboru se zálohou, stejně jako dnes">Obnovit ze zálohy</button></span></p>
+      </div>
+    </div>
+    <div class="wiz__preview">
+      <div class="card mini"><div class="eyebrow">Čisté jmění</div><span class="mini__num">—</span><div class="mini__bars"><i></i><i></i><i></i></div></div>
+      <div class="wiz__cap">Takhle bude vypadat váš přehled</div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= Modal: reset the demo ================= -->
+<div class="modal-scrim" id="m-reset">
+  <div class="modal modal--sm">
+    <div class="modal__head"><div><h2>Obnovit původní data</h2><p>Ukázka se vrátí do stavu, v jakém jste ji poprvé otevřeli.</p></div><button type="button" class="modal__close" data-close="m-reset" aria-label="Zavřít"></button></div>
+    <div class="modal__body" style="padding-bottom:22px"><div class="alert"><span data-ic="info"></span><div><b>Vaše změny v ukázce zmizí</b>Všechno, co jste v ukázce přidali, upravili nebo smazali, se vrátí zpět. Vašeho vlastního profilu se to netýká.</div></div></div>
+    <div class="modal__foot"><div class="actions"><button type="button" class="btn" data-close="m-reset">Zrušit</button><button type="button" class="btn btn--primary" id="reset-confirm">Obnovit původní data</button></div></div>
+  </div>
+</div>
+
+<script src="../design-system/icons.js"></script>
+<script src="../design-system/shell.js"></script>
+<script src="../design-system/charts.js"></script>
+<script>
+(function () {
+  /* A few Lucide icons (ISC) the style-guide set does not carry. */
+  Object.assign(window.ICONS, {
+    "user-plus": '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/>',
+    "rotate-ccw": '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',
+    "log-out": '<path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>',
+    "globe": '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>'
+  });
+  /* The demo persona is in EUR: the style-guide helpers format koruna, so euro versions replace them here. */
+  window.fmtKc = function (n) { return (n < 0 ? "− " : "") + String(Math.abs(Math.round(n))).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " €"; };
+  window.compactKc = function (v) { return Math.round(v / 1000) + " tis. €"; };
+  var $ = function (id) { return document.getElementById(id); };
+  var all = function (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
+
+  /* ---------- static icon slots ---------- */
+  all("[data-ic]").forEach(function (el) { el.outerHTML = icon(el.dataset.ic, +el.dataset.size || 16); });
+  all("[data-li]").forEach(function (li) { li.innerHTML = icon("check", 14) + "<span>" + li.innerHTML + "</span>"; });
+  all(".modal__close").forEach(function (b) { b.innerHTML = icon("x", 14); });
+  $("lang-btn").innerHTML = icon("globe", 14) + "Čeština" + icon("chevron-down", 12);
+
+  /* ---------- sidebar (IA from src/components/common/nav-config.ts) ---------- */
+  var IA = [
+    { items: [["overview", "Přehled", "layout-dashboard"]] },
+    { title: "Peníze", items: [["bank", "Bankovní účty", "landmark"], ["cashflow", "Cashflow", "chart-column"], ["plans", "Výdajové plány", "piggy-bank"], ["planning", "Plánování cashflow", "repeat"]] },
+    { title: "Investice", items: [["stocks", "Akcie", "trending-up"], ["crypto", "Krypto", "bitcoin"], ["bonds", "Dluhopisy", "file-text"], ["estate", "Nemovitosti", "house"], ["other", "Ostatní aktiva", "gem"]] },
+    { title: "Závazky a pojištění", items: [["loans", "Úvěry", "credit-card"], ["insurance", "Pojištění", "shield"]] },
+    { title: "Nástroje", collapsed: true, items: [["projection", "Projekce", "chart-line"], ["analysis", "Analýza akcií", "tag"], ["monitor", "Sledování akcií", "chart-candlestick"]] }
+  ];
+  function renderSidebar(active) {
+    var h = '<div class="brand"><i class="moon"></i><div><b>moony</b><small>Osobní správce majetku</small></div></div><div class="sidebar__scroll">';
+    IA.forEach(function (g) {
+      h += '<div class="nav-group' + (g.collapsed ? " is-collapsed" : "") + '">' +
+        (g.title ? '<button type="button" class="nav-group__title"><span>' + g.title + "</span>" + icon("chevron-down", 12) + "</button>" : "") +
+        '<div class="nav">' + g.items.map(function (i) { return '<button type="button" class="nav__item' + (i[0] === active ? " is-active" : "") + '" data-nav="' + i[0] + '">' + icon(i[2]) + "<span>" + i[1] + "</span></button>"; }).join("") + "</div></div>";
+    });
+    h += '</div><div class="sidebar__foot">' +
+      '<div class="demo-card"><span class="badge badge--outline">Ukázka</span><p>Prohlížíte smyšlená data. Až budete chtít začít se svými financemi:</p><button type="button" class="btn btn--sm" data-go="wizard">Založit vlastní profil</button></div>' +
+      '<div class="account-wrap"><div class="menu account-menu" id="account-menu">' +
+        '<button type="button" class="menu__item" data-go="wizard">' + icon("user-plus") + "Založit vlastní profil</button>" +
+        '<button type="button" class="menu__item" data-open="m-reset">' + icon("rotate-ccw") + "Obnovit původní data</button>" +
+        '<div class="menu__sep"></div>' +
+        '<button type="button" class="menu__item" data-toast="Otevře Pravidla kategorizace">' + icon("list-filter") + "Pravidla kategorizace</button>" +
+        '<button type="button" class="menu__item" data-go="settings">' + icon("settings") + "Nastavení</button>" +
+        '<button type="button" class="menu__item" data-toast="Otevře O aplikaci">' + icon("info") + "O aplikaci</button>" +
+        '<div class="menu__sep"></div>' +
+        '<button type="button" class="menu__item" data-go="again">' + icon("log-out") + "Ukončit ukázku</button>" +
+      "</div>" +
+      '<button type="button" class="account" id="account"><i class="avatar avatar--demo">AM</i><div><b>Alex Meyer</b><small>Ukázkový profil</small></div></button></div></div>';
+    $("sidebar").innerHTML = h;
+  }
+
+  /* ---------- overview data ---------- */
+  var moves = [
+    ["22. 11.", "Lidl", "Potraviny", -64],
+    ["21. 11.", "Nákup · Vanguard FTSE All-World, 4 ks", "Akcie", -512],
+    ["20. 11.", "Mzda · Northwind Labs", "Mzda", 3850],
+    ["18. 11.", "Splátka hypotéky", "Bydlení", -742],
+    ["15. 11.", "Elektřina a plyn", "Bydlení", -128],
+    ["14. 11.", "Dividenda · Microsoft", "Dividendy", 18]
+  ];
+  $("moves").innerHTML = '<div class="table__head"><span>Datum</span><span>Popis</span><span>Kategorie</span><span class="cell--num">Částka</span></div>' +
+    moves.map(function (m) {
+      return '<div class="table__row"><span class="muted num">' + m[0] + '</span><span class="cell--name">' + m[1] + '</span><span><span class="badge">' + m[2] + '</span></span><span class="cell--num num ' + (m[3] > 0 ? "gain" : "") + '">' + fmtSigned(m[3]) + "</span></div>";
+    }).join("");
+  var alloc = [["Nemovitosti", 73.1, "var(--s1)"], ["Akcie a fondy", 17.6, "var(--s2)"], ["Krypto a dluhopisy", 5.0, "var(--s3)"], ["Hotovost", 4.3, "var(--s4)"]];
+  drawRing($("ring"), alloc.map(function (a) { return { pct: a[1], color: a[2] }; }));
+  $("alloc-list").innerHTML = alloc.map(function (a) { return '<div class="kv"><span><i class="dot" style="background:' + a[2] + ';margin-right:8px"></i>' + a[0] + '</span><b>' + String(a[1]).replace(".", ",") + " %</b></div>"; }).join("");
+
+  var series = (function () {
+    var end = new Date(2026, 10, 23), v = 284600, seed = 11, out = [];
+    for (var i = 0; i < 366; i++) {
+      out.unshift({ date: new Date(end.getTime() - i * 864e5), value: Math.round(v) });
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      v = v / (1 + 0.00048 + (seed / 0x7fffffff - 0.5) * 0.0052);
+    }
+    return out;
+  })();
+  (function () {
+    var last = series[series.length - 1].value, prev = series[series.length - 31].value, d = last - prev;
+    $("hero-delta").innerHTML = "↗ " + fmtPct(d / prev * 100) + "<span>" + fmtSigned(d) + " za posledních 30 dní</span>";
+  })();
+  function drawHero() { if ($("scene-app").classList.contains("is-on") && !$("page-overview").hidden) drawLine($("chart-hero"), series, { axisEl: $("axis-hero"), height: 170 }); }
+  window.addEventListener("resize", drawHero);
+
+  /* ---------- settings in the demo ---------- */
+  var SECTIONS = [
+    { id: "demo", label: "Ukázka", lead: "Co můžete s ukázkovými daty dělat a jak z nich přejít k vlastnímu profilu." },
+    { id: "general", label: "Obecné", open: "Jazyk, vzhled, měna a položky v menu fungují v ukázce stejně jako ve vašem profilu." },
+    { id: "categorization", label: "Kategorizace", open: "Balíčky pravidel, kategorie a vlastní pravidla si v ukázce můžete vyzkoušet naplno." },
+    { id: "security", label: "Zabezpečení", locked: "Ukázka nemá heslo ani zámek. Heslo, automatické zamykání a odemykání otiskem nastavíte ve vlastním profilu." },
+    { id: "data", label: "Data a zálohy", locked: "Ukázku není třeba zálohovat, kdykoli ji vrátíte do původního stavu. Zálohy a obnova patří k vlastnímu profilu." },
+    { id: "sync", label: "Synchronizace", locked: "Smyšlená data se mezi zařízeními nesynchronizují. Synchronizaci zapnete ve vlastním profilu." },
+    { id: "integrations", label: "AI asistent", locked: "Lokální MCP server je v ukázce vypnutý, aby asistent nepracoval se smyšlenými čísly jako s vašimi." }
+  ];
+  function renderSettings(id) {
+    var s = SECTIONS.filter(function (x) { return x.id === id; })[0];
+    $("snav").innerHTML = SECTIONS.map(function (x) {
+      return '<button type="button" data-set="' + x.id + '" class="' + (x.id === id ? "is-active" : "") + (x.locked ? " is-locked" : "") + '">' +
+        (x.id === "demo" ? '<span class="badge badge--outline">Ukázka</span>' : x.label) + (x.locked ? icon("lock", 13) : "") + "</button>";
+    }).join("");
+    $("set-title").textContent = s.label;
+    $("set-lead").textContent = s.lead || (s.locked ? "V ukázce nedostupné." : "V ukázce funguje jako obvykle.");
+    if (s.id === "demo") {
+      $("set-body").innerHTML = '<section class="card">' +
+        '<div class="card__head"><div><h2 class="card__title">Ukázková data</h2><p class="card__sub">Smyšlený profil Alexe Meyera · otevřený dnes v 9:12 · 14 vašich změn</p></div></div>' +
+        '<div class="srow"><div><b>Založit vlastní profil</b><small>Průvodce vás provede heslem, klíčem pro obnovu a prvním účtem. Ukázková data se do profilu nepřenesou.</small></div><button type="button" class="btn btn--primary" data-go="wizard">Založit vlastní profil</button></div>' +
+        '<div class="srow"><div><b>Obnovit původní data</b><small>Vrátí ukázku do stavu, v jakém jste ji poprvé otevřeli. Vaše změny v ukázce zmizí.</small></div><button type="button" class="btn" data-open="m-reset">Obnovit původní data</button></div>' +
+        '<div class="srow"><div><b>Ukončit ukázku</b><small>Vrátí vás na úvodní obrazovku. Změny v ukázce zůstanou a příště můžete pokračovat.</small></div><button type="button" class="btn" data-go="again">Ukončit ukázku</button></div>' +
+        "</section>";
+    } else if (s.locked) {
+      $("set-body").innerHTML = '<section class="card"><div class="empty">' + icon("lock", 22) + "<h3>" + s.label + " až ve vlastním profilu</h3><p>" + s.locked + '</p><button type="button" class="btn" data-go="wizard">Založit vlastní profil</button></div></section>';
+    } else {
+      $("set-body").innerHTML = '<section class="card"><div class="empty">' + icon("check", 22) + "<h3>Beze změny</h3><p>" + s.open + "</p></div></section>";
+    }
+  }
+
+  /* ---------- notes ---------- */
+  var NOTES = {
+    first: ["První spuštění", [
+      "Nová obrazovka mezi úvodní animací a průvodcem. Průvodce samotný se nemění.",
+      "<b>Vlastní profil je hlavní tlačítko</b>, ukázka vedlejší. Obě karty jsou stejně velké, aby ukázka nepůsobila jako druhořadá volba.",
+      "Ukázka se otevře <b>bez hesla</b> a bez jediné otázky. <b>Jazyk se bere z přepínače vpravo nahoře</b>, data jsou pro všechny stejná: Alex Meyer, v eurech (rozhodnuto 23. 11.).",
+      "Odkazy „Připojit k synchronizaci“ a „Obnovit ze zálohy“ jsou tady jen <b>jako zkratka navíc</b>. První krok průvodce je má dál, beze změny (rozhodnuto 23. 11.)."
+    ]],
+    demo: ["V ukázce", [
+      "Jeden motiv: <b>čárkovaný obrys znamená „smyšlené, ne vaše“</b>. Nese ho štítek, karta v postranním panelu i avatar. Žádná nová barva, zelená a červená dál znamenají jen zisk a ztrátu.",
+      "Karta nad řádkem profilu je vždy na očích, protože postranní panel se neposouvá. V horní liště je štítek „Ukázková data“ s vysvětlením po kliknutí. (Rozhodnuto 23. 11.: varianta A, pruh nahoře zamítnut.)",
+      "Uvítací karta na Přehledu se ukáže jednou, jde zavřít a nabízí tři místa, kde je aplikace nejsilnější.",
+      "Všechno ostatní funguje jako ve skutečném profilu, včetně přidávání, mazání a importu výpisu."
+    ]],
+    menu: ["Nabídka profilu", [
+      "Řádek profilu říká „Ukázkový profil“ místo „Účet a zámek aplikace“.",
+      "Nahoře dvě nové položky: <b>Založit vlastní profil</b> a <b>Obnovit původní data</b>.",
+      "„Zamknout aplikaci“ nahrazuje <b>Ukončit ukázku</b>, protože ukázka nemá heslo. Vrátí na úvodní obrazovku, změny zůstanou."
+    ]],
+    settings: ["Nastavení v ukázce", [
+      "Nová první sekce <b>Ukázka</b> se třemi akcemi. Nahrazuje sekci Účet (smazání dat), která v ukázce nedává smysl.",
+      "Zabezpečení, Data a zálohy, Synchronizace a AI asistent jsou vidět, ale <b>zamčené s vysvětlením</b>. Člověk vidí, co aplikace umí, a každá z nich vede k založení profilu.",
+      "Obecné a Kategorizace fungují naplno.",
+      "„Obnovit původní data“ je jediné místo s potvrzením, protože jako jediné něco nevratně zahodí."
+    ]],
+    wizard: ["Cesta k vlastnímu profilu", [
+      "Z ukázky vede „Založit vlastní profil“ <b>rovnou do průvodce, bez potvrzovacího okna</b>. Vstupem do průvodce se nic neztrácí.",
+      "<b>První krok je stejný jako dnes</b>, včetně „Připojit k synchronizaci“ a „Obnovit ze zálohy“ (rozhodnuto 23. 11.). Přibývá jen tlačítko zpět a jedna věta, že se ukázková data nepřenesou.",
+      "Tlačítko zpět říká <b>Zpět do ukázky</b>. Kdo přišel z úvodní obrazovky, má tam „Zpět“.",
+      "Ukázka zmizí, <b>až skutečný profil vznikne</b>: založením ve třetím kroku, obnovou ze zálohy, nebo připojením k synchronizaci. Do té doby se dá vrátit.",
+      "Stejných pět kroků, stejné texty."
+    ]],
+    again: ["Další spuštění", [
+      "Dokud neexistuje vlastní profil, začíná každé spuštění <b>na téhle obrazovce</b>, ne rovnou v ukázce.",
+      "Karta ukázky se změní na <b>Pokračovat v ukázce</b> a řekne, že změny zůstaly. Pod tlačítkem je možnost začít znovu.",
+      "Jakmile vlastní profil vznikne, obrazovka zmizí a aplikace začíná zámkem jako dnes."
+    ]]
+  };
+  var OPEN = [
+    "<b>Další spuštění:</b> úvodní obrazovka s „Pokračovat v ukázce“, nebo rovnou zpět do ukázky?",
+    "<b>Změny v ukázce:</b> zůstávají do obnovení, nebo se ukázka při každém spuštění vrátí do původního stavu?",
+    "<b>Po založení profilu:</b> ukázka zmizí nadobro, nebo má zůstat dostupná (třeba ze zámku)?",
+    "<b>Kurzy:</b> skutečné tituly se staženými kurzy, nebo zmrazená smyšlená cena bez sítě?",
+    "<b>Telefon:</b> stejná volba v prvním spuštění hned, nebo až po počítači?"
+  ];
+  function renderNotes(scene) {
+    var n = NOTES[scene];
+    $("notes").innerHTML = "<h2>" + n[0] + "</h2><h3>Co tu vidíte</h3><ul>" + n[1].map(function (x) { return "<li>" + x + "</li>"; }).join("") + "</ul>" +
+      "<h3>K rozhodnutí</h3><ol>" + OPEN.map(function (x) { return "<li>" + x + "</li>"; }).join("") + "</ol>" +
+      "<h3>Jak to vznikne</h3><p>Ukázka se nepřibalí jako hotový soubor. Vygeneruje se při prvním otevření do vlastní složky vedle místa pro skutečný profil, takže historie vždy končí dneškem a instalátor neroste.</p>";
+  }
+
+  /* ---------- scenes ---------- */
+  var state = { scene: "first", returning: false, from: "first" };
+  function setReturning(on) {
+    state.returning = on;
+    $("demo-title").textContent = on ? "Pokračovat v ukázce" : "Vyzkoušet na ukázkových datech";
+    $("demo-text").textContent = on ? "Naposledy otevřená včera ve 21:14. Co jste v ní změnili, zůstalo." : "Hotový profil smyšlené osoby s několikaletou historií, v eurech a v jazyce, který máte zvolený. Bez hesla a bez nastavování.";
+    $("demo-open").textContent = on ? "Pokračovat v ukázce" : "Otevřít ukázku";
+    $("demo-restart").hidden = !on;
+  }
+  function closeFloating() { $("tb-pop").classList.remove("is-open"); var m = $("account-menu"); if (m) m.classList.remove("is-open"); hideTip(); }
+  function show(scene) {
+    closeFloating();
+    state.scene = scene;
+    all(".pbar [data-scene]").forEach(function (b) { b.classList.toggle("is-active", b.dataset.scene === scene); });
+    var map = { first: "first", again: "first", demo: "app", menu: "app", settings: "app", wizard: "wizard" };
+    all(".scene").forEach(function (s) { s.classList.toggle("is-on", s.id === "scene-" + map[scene]); });
+    if (scene === "first") setReturning(false);
+    if (scene === "again") setReturning(true);
+    if (map[scene] === "app") {
+      var settings = scene === "settings";
+      renderSidebar(settings ? "" : "overview");
+      $("page-overview").hidden = settings; $("page-settings").hidden = !settings;
+      $("crumb").innerHTML = settings ? "<b>Nastavení</b><i>/</i><span>ukázka</span>" : "<b>Přehled</b><i>/</i><span>celkový obraz</span>";
+      if (settings) renderSettings("demo"); else drawHero();
+      if (scene === "menu") $("account-menu").classList.add("is-open");
+    }
+    if (scene === "wizard") {
+      var fromDemo = state.from === "demo";
+      $("wiz-back").innerHTML = icon("arrow-left", 14) + (fromDemo ? "Zpět do ukázky" : "Zpět");
+      $("wiz-from").innerHTML = fromDemo ? "Ukázková data se do vašeho profilu nepřenesou. Ukázka zmizí, až vlastní profil vznikne." : "";
+    }
+    renderNotes(scene);
+    window.scrollTo(0, 0);
+  }
+
+  document.addEventListener("click", function (e) {
+    var t = e.target.closest("[data-scene]"); if (t) { if (t.dataset.scene === "wizard") state.from = "demo"; show(t.dataset.scene); return; }
+    t = e.target.closest("[data-go]");
+    if (t) {
+      var go = t.dataset.go;
+      if (go === "wizard-fresh") { state.from = "first"; show("wizard"); }
+      else if (go === "wizard") { state.from = "demo"; show("wizard"); }
+      else show(go);
+      return;
+    }
+    t = e.target.closest("[data-open]"); if (t) { closeFloating(); openModal(t.dataset.open); return; }
+    t = e.target.closest("[data-close]"); if (t) { closeModal(t.dataset.close); return; }
+    t = e.target.closest("[data-toast]"); if (t) { closeFloating(); toast(t.dataset.toast); return; }
+    t = e.target.closest("[data-set]"); if (t) { renderSettings(t.dataset.set); return; }
+    if (e.target.closest("#account")) { $("account-menu").classList.toggle("is-open"); $("tb-pop").classList.remove("is-open"); return; }
+    if (e.target.closest("#tb-demo")) { $("tb-pop").classList.toggle("is-open"); var m = $("account-menu"); if (m) m.classList.remove("is-open"); return; }
+    if (e.target.closest("#welcome-close")) { $("welcome").hidden = true; $("welcome").style.display = "none"; return; }
+    if (e.target.closest("#wiz-back")) { show(state.from === "demo" ? "demo" : "first"); return; }
+    if (e.target.closest("#notes-btn")) { $("notes").classList.toggle("is-open"); $("notes-btn").classList.toggle("is-active"); return; }
+    if (e.target.closest("#theme-btn")) {
+      var dark = document.documentElement.dataset.theme !== "dark";
+      if (dark) document.documentElement.dataset.theme = "dark"; else delete document.documentElement.dataset.theme;
+      $("theme-btn").classList.toggle("is-active", dark); return;
+    }
+    if (e.target.closest("#reset-confirm")) { closeModal("m-reset"); $("welcome").hidden = false; $("welcome").style.display = ""; toast("Ukázka je zpět v původním stavu"); return; }
+    if (e.target.closest("#demo-restart")) { setReturning(false); toast("Ukázka začne znovu s původními daty"); return; }
+    if (e.target.closest("#demo-open")) {
+      var b = $("demo-open");
+      if (state.returning) { show("demo"); return; }
+      b.classList.add("is-loading", "is-disabled"); b.innerHTML = icon("refresh-cw", 14) + "Připravuji ukázková data";
+      setTimeout(function () { b.classList.remove("is-loading", "is-disabled"); b.textContent = "Otevřít ukázku"; show("demo"); }, 1100);
+      return;
+    }
+    if (!e.target.closest(".pop") && !e.target.closest(".account-menu")) closeFloating();
+  });
+
+  show("first");
+})();
+</script>
+</body>
+</html>

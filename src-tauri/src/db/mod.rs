@@ -190,6 +190,14 @@ impl Database {
         Ok(scoped)
     }
 
+    /// The same database without a session pin: follows whatever session is open (a worker that
+    /// outlives sessions and pins each piece of work itself, `history_recalc::schedule`).
+    pub(crate) fn unpinned(&self) -> Self {
+        let mut handle = self.clone();
+        handle.expected_session = None;
+        handle
+    }
+
     /// Execute a function with the database connection
     /// Returns an error if the database is not open
     pub fn with_conn<F, T>(&self, f: F) -> Result<T>
@@ -467,6 +475,20 @@ mod tests {
         assert!(require_session(Some(7), 9).is_err()); // reopen, including the same path
         assert!(require_session(Some(9), 9).is_ok());
         assert!(require_session(None, 9).is_ok()); // normal app handles follow the new session
+    }
+
+    #[test]
+    fn an_unpinned_handle_follows_the_next_session() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("moony.db");
+        let key = crate::services::crypto::master_key_to_hex(&[9; 32]);
+        let db = Database::new();
+        db.create_with_key(path.clone(), &key).expect("create");
+        let pinned = db.current_session().expect("pinned");
+        db.close();
+        db.open_with_key(path, &key).expect("reopen");
+        assert!(pinned.with_conn(|_| Ok(())).is_err(), "the pin holds");
+        assert!(pinned.unpinned().with_conn(|_| Ok(())).is_ok());
     }
 
     #[test]

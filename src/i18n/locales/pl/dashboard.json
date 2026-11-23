@@ -148,5 +148,14 @@
       "valuation": "aktualizacja wyceny {{name}}",
       "firstValuation": "pierwsza wycena {{name}}"
     }
+  },
+  "demoWelcome": {
+    "title": "Witamy w przykładzie",
+    "text": "Alex Meyer nie istnieje. Ma trzy konta, akcje i krypto, mieszkanie z kredytem hipotecznym i cztery lata historii. Zmieniaj, dodawaj i usuwaj, co chcesz – przykład możesz w każdej chwili przywrócić do stanu początkowego.",
+    "links": {
+      "cashflow": "Gdzie znikają pieniądze",
+      "stocks": "Jak radzą sobie akcje",
+      "projection": "Co będzie za dwadzieścia lat"
+    }
   }
 }

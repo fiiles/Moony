@@ -16,8 +16,11 @@
       "integrations": "Den lokala MCP-servern för AI-assistenter.",
       "sync": "Håller dina enheter i takt, end-to-end-krypterat.",
       "categorization": "Regelpaket, kategorier och dina egna kategoriseringsregler.",
-      "account": "Radera dina data från den här datorn."
-    }
+      "account": "Radera dina data från den här datorn.",
+      "demo": "Vad du kan göra med exempeldata och hur du går över till din egen profil.",
+      "lockedInDemo": "Inte tillgängligt i exemplet."
+    },
+    "demo": "Exempel"
   },
   "profile": {
     "title": "Profil",
@@ -272,6 +275,23 @@
     "kit": {
       "title": "Återställningskit för synkronisering",
       "text": "Hämtar tillbaka dina synkroniserade data när alla enheter är förlorade. Ett för alla dina enheter."
+    }
+  },
+  "demo": {
+    "title": "Exempeldata",
+    "sub": "Påhittad profil för Alex Meyer",
+    "subToday": "Påhittad profil för Alex Meyer · öppnad idag kl. {{time}}",
+    "subYesterday": "Påhittad profil för Alex Meyer · öppnad igår kl. {{time}}",
+    "subOn": "Påhittad profil för Alex Meyer · öppnad {{date}}",
+    "createHint": "Guiden tar dig genom lösenord, återställningsnyckel och första konto. Exempeldata förs inte över till profilen.",
+    "resetHint": "Återställer exemplet till hur det var när du öppnade det första gången. Dina ändringar i exemplet försvinner.",
+    "exitHint": "Tar dig tillbaka till startskärmen. Ändringarna i exemplet finns kvar och du kan fortsätta nästa gång.",
+    "locked": {
+      "title": "{{section}} finns i din egen profil",
+      "security": "Exemplet har varken lösenord eller lås. Lösenord, automatisk låsning och upplåsning med fingeravtryck ställer du in i din egen profil.",
+      "data": "Exemplet behöver ingen säkerhetskopia, du kan när som helst återställa det till ursprungligt skick. Säkerhetskopior och återställning hör till din egen profil.",
+      "sync": "Påhittade data synkroniseras inte mellan enheter. Synkronisering slår du på i din egen profil.",
+      "integrations": "Den lokala MCP-servern är avstängd i exemplet så att en assistent inte tar påhittade siffror för dina."
     }
   }
 }

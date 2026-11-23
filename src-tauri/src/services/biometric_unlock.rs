@@ -136,6 +136,8 @@ pub fn enable(
     data_dir: &Path,
     reason: &str,
 ) -> Result<()> {
+    // The demo has no key to keep behind biometry (ADR 0037).
+    crate::services::profile_dir::ensure_not_demo()?;
     let key_hex = session.hex().ok_or_else(|| {
         AppError::Internal("No unlocked session to enable biometric unlock with".into())
     })?;
@@ -524,6 +526,23 @@ mod tests {
         );
         assert_eq!(read_marker(dir.path()), Marker::Enabled);
         assert!(session.hex().is_some(), "the session keeps its key");
+    }
+
+    #[test]
+    fn enable_is_refused_while_the_demo_is_open() {
+        let dir = tempdir().expect("tempdir");
+        let session = SessionKey::default();
+        session.set(&KEY);
+        let keychain = StubKeychain::default();
+        {
+            let _demo = crate::services::profile_dir::demo_flag_for_test(true);
+            let err = enable(&keychain, &session, dir.path(), "r").unwrap_err();
+            assert_auth(err, crate::services::profile_dir::NOT_IN_DEMO);
+            assert!(keychain.calls().is_empty(), "nothing was stored");
+            assert_eq!(read_marker(dir.path()), Marker::Absent);
+        }
+        enable(&keychain, &session, dir.path(), "r").expect("enable once closed");
+        assert_eq!(read_marker(dir.path()), Marker::Enabled);
     }
 
     #[test]

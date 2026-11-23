@@ -18,6 +18,7 @@ use crate::services::sync::natural_id::natural_id;
 use rusqlite::{params, Connection};
 
 use super::apply::SOURCE_EXACT_MATCH;
+use super::exact_match::ExactMatchEngine;
 use super::recategorize;
 use super::tokenizer::{normalize_iban, normalize_payee_key};
 use super::CategorizationEngine;
@@ -294,7 +295,13 @@ impl LearnedKey {
 /// oldest first, so when several rows share a normalized key — the audit had
 /// sixteen for one airline — the newest decides. Returns the rows read.
 pub fn load_learned_payees(conn: &Connection, engine: &CategorizationEngine) -> Result<usize> {
+    // A failed read leaves the engine's layer as it is.
     let rows = all_rows(conn)?;
+    // The database is the whole truth: a reload replaces what the engine learned before (another
+    // profile's payees, the demo's, or a payee deleted since), it never merges into it. The new
+    // layer is built aside and swapped in at once, so a categorization meanwhile sees either the
+    // old set or the new one, never an empty or half-filled layer.
+    let mut layer = ExactMatchEngine::new();
     let mut loaded = 0;
     for row in &rows {
         let (payee, iban) = (row.payee_key(), row.iban_key());
@@ -302,7 +309,7 @@ pub fn load_learned_payees(conn: &Connection, engine: &CategorizationEngine) -> 
             continue;
         }
         if let (Some(account), Some(credit)) = (row.bank_account_id.as_deref(), row.is_credit) {
-            engine.learn_scoped(
+            layer.learn_scoped(
                 account,
                 credit,
                 payee.as_deref(),
@@ -310,10 +317,11 @@ pub fn load_learned_payees(conn: &Connection, engine: &CategorizationEngine) -> 
                 &row.category_id,
             );
         } else {
-            engine.learn_from_user(payee.as_deref(), iban.as_deref(), &row.category_id);
+            layer.learn_hierarchical(payee.as_deref(), iban.as_deref(), &row.category_id);
         }
         loaded += 1;
     }
+    engine.replace_learned(layer);
     Ok(loaded)
 }
 
@@ -932,6 +940,32 @@ mod tests {
             )
             .unwrap();
         assert_eq!(airline, "cat_travel");
+    }
+
+    #[test]
+    fn a_reload_replaces_the_learned_layer_and_a_failed_read_keeps_it() {
+        let engine = CategorizationEngine::new_empty();
+        engine.learn_from_user(Some("demo grocer"), None, "cat_demo");
+        let conn = setup_test_db();
+        insert_raw_row(&conn, "r1", "DR. MAX 03", "cat_health", 1000);
+
+        let broken = Connection::open_in_memory().expect("db without tables");
+        assert!(load_learned_payees(&broken, &engine).is_err());
+        assert_eq!(engine.stats().learned_payees, 1, "the old layer stays");
+
+        assert_eq!(load_learned_payees(&conn, &engine).unwrap(), 1);
+        assert_eq!(engine.stats().learned_payees, 1, "only the stored row");
+        let grocer = TransactionInput::new("t".into(), None, Some("demo grocer".into()), -10.0);
+        assert_eq!(
+            engine.categorize(&grocer).category_id(),
+            None,
+            "the previous profile's payee is gone"
+        );
+        let pharmacy = TransactionInput::new("t".into(), None, Some("DR. MAX 07".into()), -90.0);
+        assert_eq!(
+            engine.categorize(&pharmacy).category_id(),
+            Some("cat_health")
+        );
     }
 
     #[test]

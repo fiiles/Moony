@@ -16,8 +16,11 @@
       "integrations": "Il server MCP locale per gli assistenti AI.",
       "sync": "Tiene allineati i tuoi dispositivi, con cifratura end-to-end.",
       "categorization": "Pacchetti di regole, categorie e le tue regole di categorizzazione.",
-      "account": "Eliminazione dei tuoi dati da questo computer."
-    }
+      "account": "Eliminazione dei tuoi dati da questo computer.",
+      "demo": "Cosa puoi fare con i dati di esempio e come passare al tuo profilo.",
+      "lockedInDemo": "Non disponibile nell'esempio."
+    },
+    "demo": "Esempio"
   },
   "profile": {
     "title": "Profilo",
@@ -276,6 +279,23 @@
     "kit": {
       "title": "Kit di ripristino della sincronizzazione",
       "text": "Riporta i tuoi dati sincronizzati quando perdi tutti i dispositivi. Uno solo per tutti i tuoi dispositivi."
+    }
+  },
+  "demo": {
+    "title": "Dati di esempio",
+    "sub": "Profilo immaginario di Alex Meyer",
+    "subToday": "Profilo immaginario di Alex Meyer · aperto oggi alle {{time}}",
+    "subYesterday": "Profilo immaginario di Alex Meyer · aperto ieri alle {{time}}",
+    "subOn": "Profilo immaginario di Alex Meyer · aperto il {{date}}",
+    "createHint": "La procedura guidata ti accompagna tra password, chiave di recupero e primo conto. I dati di esempio non passano al profilo.",
+    "resetHint": "Riporta l'esempio allo stato in cui l'hai aperto la prima volta. Le tue modifiche nell'esempio andranno perse.",
+    "exitHint": "Ti riporta alla schermata iniziale. Le modifiche nell'esempio restano e la prossima volta puoi continuare.",
+    "locked": {
+      "title": "{{section}} nel tuo profilo",
+      "security": "L'esempio non ha password né blocco. Password, blocco automatico e sblocco con impronta si impostano nel tuo profilo.",
+      "data": "L'esempio non ha bisogno di backup: puoi riportarlo allo stato originale in qualsiasi momento. Backup e ripristino fanno parte del tuo profilo.",
+      "sync": "I dati inventati non si sincronizzano tra i dispositivi. La sincronizzazione si attiva nel tuo profilo.",
+      "integrations": "Il server MCP locale è spento nell'esempio, così un assistente non scambia numeri inventati per i tuoi."
     }
   }
 }

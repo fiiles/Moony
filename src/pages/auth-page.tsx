@@ -10,6 +10,9 @@
  * lock, and only for a window the person is looking at (otherwise on its next focus); after a
  * cancel it waits for the button. A key that no longer works switches the unlock off in Rust and
  * the screen says once why; the way back is Settings, never an offer.
+ *
+ * Desktop first run without a profile (ADR 0037): intro → the choice between an own profile and
+ * the demo (`FirstRunChoice`) → the wizard; `firstRunScreen` decides which one shows.
  */
 import { useCallback, useEffect, useState } from 'react';
 import { useIsMutating } from '@tanstack/react-query';
@@ -20,7 +23,7 @@ import { useTranslation } from 'react-i18next';
 import { CircleAlert, RefreshCw } from 'lucide-react';
 import { z } from 'zod';
 import { recoverSchema, unlockSchema } from '@shared/schema';
-import { GREETING_NAME_KEY, LOCKED_AT_KEY, useAuth } from '@/hooks/use-auth';
+import { DEMO_AVAILABLE, GREETING_NAME_KEY, LOCKED_AT_KEY, useAuth } from '@/hooks/use-auth';
 import { REPLACE_DEVICE_MUTATION_KEY } from '@/hooks/use-device-sync-mutations';
 import { useSettingsMutations } from '@/hooks/use-settings-mutations';
 import { useBiometricStatus } from '@/hooks/use-biometric-status';
@@ -51,6 +54,8 @@ import { Input } from '@/components/ui/input';
 import { MoonMark } from '@/components/common/MoonMark';
 import { OnboardingWizard } from '@/components/auth/OnboardingWizard';
 import { OnboardingWelcome } from '@/components/auth/OnboardingWelcome';
+import { FirstRunChoice } from '@/components/auth/FirstRunChoice';
+import { firstRunScreen } from '@/utils/demo-profile';
 import { PasswordInput } from '@/components/auth/PasswordInput';
 import { LanguageSelect } from '@/components/common/LanguageSelect';
 import { RecoveryKeyBox } from '@/components/auth/RecoveryKeyBox';
@@ -88,6 +93,11 @@ export default function AuthPage() {
     confirmRecoveryMutation,
     recoveryKey,
     clearRecoveryKey,
+    isDemo,
+    storedDemo,
+    wizardEntry,
+    leaveWizard,
+    openDemoMutation,
   } = useAuth();
   const syncFeature = useDeviceSyncFeature();
   const [, setLocation] = useLocation();
@@ -133,11 +143,12 @@ export default function AuthPage() {
   }, []);
 
   useEffect(() => {
-    // Only redirect if unlocked AND the first-run wizard is not still running
-    if (user && appStatus === 'unlocked' && !recoveryKey && !wizardActive) {
+    // Only redirect if unlocked AND the first-run wizard is not still running (the demo opened
+    // from the first run goes straight in)
+    if (user && appStatus === 'unlocked' && !recoveryKey && (!wizardActive || isDemo)) {
       setLocation('/');
     }
-  }, [user, appStatus, setLocation, recoveryKey, wizardActive]);
+  }, [user, appStatus, setLocation, recoveryKey, wizardActive, isDemo]);
 
   const unlockForm = useForm<z.infer<typeof unlockSchema>>({
     resolver: zodResolver(unlockSchema),
@@ -240,6 +251,16 @@ export default function AuthPage() {
     lockedAt !== null && new Date(lockedAt).toDateString() === new Date().toDateString();
 
   if (wizardActive) {
+    const screen = firstRunScreen({
+      desktop: DEMO_AVAILABLE,
+      introDone,
+      demoExists: storedDemo?.exists === true,
+      wizardEntry,
+    });
+    const fromDemo = wizardEntry?.from === 'demo';
+    const meta = version
+      ? t(syncFeature ? 'lock.metaSync' : 'lock.meta', { version })
+      : t(syncFeature ? 'lock.metaNoVersionSync' : 'lock.metaNoVersion');
     return (
       <div className="onboarding-shell relative min-h-screen bg-canvas">
         <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex h-16 items-center justify-end px-6">
@@ -248,17 +269,34 @@ export default function AuthPage() {
             showFormatSample={false}
             value={selectedLanguage}
             onChange={handleLanguageChange}
-            disabled={updateProfile.isPending || replacingData}
+            disabled={updateProfile.isPending || replacingData || openDemoMutation.isPending}
           />
         </header>
-        {introDone ? (
+        {screen === 'wizard' ? (
           <OnboardingWizard
             language={selectedLanguage}
+            entryPath={wizardEntry?.path}
+            back={
+              wizardEntry
+                ? {
+                    label: fromDemo ? t('onboarding.fromDemo.back') : tc('buttons.back'),
+                    // From the demo: reopen it in the language chosen here; else the choice screen
+                    onBack: fromDemo
+                      ? () => openDemoMutation.mutate(selectedLanguage)
+                      : leaveWizard,
+                    pending: openDemoMutation.isPending,
+                    note: fromDemo ? t('onboarding.fromDemo.note') : undefined,
+                  }
+                : undefined
+            }
             onFinished={() => {
               setWizardDone(true);
+              leaveWizard();
               setLocation('/');
             }}
           />
+        ) : screen === 'choice' ? (
+          <FirstRunChoice language={selectedLanguage} meta={meta} />
         ) : (
           <OnboardingWelcome onContinue={finishIntro} />
         )}

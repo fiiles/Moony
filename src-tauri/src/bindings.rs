@@ -19,6 +19,9 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::UpdateUserProfile>();
     types.register::<crate::models::InsertUserProfile>();
 
+    // Demo profile (ADR 0037)
+    types.register::<crate::models::DemoStatus>();
+
     // Biometric unlock (phone lock screen)
     types.register::<crate::models::BiometricStatus>();
     types.register::<crate::models::BiometryType>();

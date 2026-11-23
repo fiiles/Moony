@@ -32,7 +32,8 @@ use zeroize::Zeroizing;
 
 use super::sync::{
     app_error, app_error_for, data_dir, guarded_change, kit_owner, mapped_for_server, now,
-    require_feature, sync_on, verify_password, AppEngine, KeychainBinding, KitOwner,
+    require_feature, require_feature_outside_demo, sync_on, verify_password, AppEngine,
+    KeychainBinding, KitOwner,
 };
 use super::sync_backups::{consent_of, outcome_view};
 use crate::db::Database;
@@ -510,7 +511,7 @@ pub async fn sync_pairing_start(
     password: String,
 ) -> Result<PairingView> {
     let password = Zeroizing::new(password);
-    require_feature()?;
+    require_feature_outside_demo()?;
     let session = db.current_session()?;
     let role = Role::of(sync_on(&session)?);
     holder_may_hand_keys_on(&session, role)?;
@@ -538,7 +539,7 @@ pub async fn sync_pairing_scan(
     password: String,
 ) -> Result<PairingView> {
     let password = Zeroizing::new(password);
-    require_feature()?;
+    require_feature_outside_demo()?;
     let session = db.current_session()?;
     let role = Role::of(sync_on(&session)?);
     holder_may_hand_keys_on(&session, role)?;
@@ -659,7 +660,7 @@ pub async fn sync_pairing_join(
     db: State<'_, Database>,
     consent: ReplaceConsentView,
 ) -> Result<ReplaceOutcomeView> {
-    require_feature()?;
+    require_feature_outside_demo()?;
     let consent = consent_of(&consent)?;
     let owner = kit_owner(&app, &db)?;
     let session = db.current_session()?;
@@ -734,7 +735,7 @@ pub async fn sync_join_with_recovery_kit(
 ) -> Result<ReplaceOutcomeView> {
     let password = Zeroizing::new(password);
     let code = Zeroizing::new(code);
-    require_feature()?;
+    require_feature_outside_demo()?;
     let consent = consent_of(&consent)?;
     devices::validate_device_name(&device_name)?;
     let verify = verify_password(&app, password.clone());

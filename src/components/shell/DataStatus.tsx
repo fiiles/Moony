@@ -9,6 +9,7 @@ import { SyncRemovedSection, SyncStatusSection } from '@/components/shell/SyncSt
 import { portfolioApi, priceApi } from '@/lib/tauri-api';
 import { useSyncStatus } from '@/hooks/sync-context';
 import { useDeviceSyncFeature, useDeviceSyncStatus } from '@/hooks/use-device-sync';
+import { useAuth } from '@/hooks/use-auth';
 import { useHistoryRecalculation } from '@/hooks/use-history-recalculation';
 import { FX_HISTORY_KEY, FX_SNAPSHOT_KEY } from '@/hooks/use-fx';
 import { cn } from '@/lib/utils';
@@ -61,7 +62,9 @@ export function DataStatus({ override }: { override?: ShellStatus }) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { isSyncing: loadingHistory } = useSyncStatus();
   const recalculating = useHistoryRecalculation().length > 0;
-  const syncFeature = useDeviceSyncFeature();
+  // The demo profile never syncs (ADR 0037): no sync section, whatever the build offers
+  const { isDemo, profileOpen } = useAuth();
+  const syncFeature = useDeviceSyncFeature() && !isDemo;
   const { data: deviceSync } = useDeviceSyncStatus();
   const now = Math.floor(Date.now() / 1000);
   const syncView = syncFeature ? syncState(deviceSync, now) : null;
@@ -69,6 +72,8 @@ export function DataStatus({ override }: { override?: ShellStatus }) {
   const { data: priceStatus, refetch } = useQuery({
     queryKey: ['price-status'],
     queryFn: () => portfolioApi.getPriceStatus(),
+    // Only while a profile's database is open (not during a demo close or reset)
+    enabled: profileOpen,
     refetchInterval: 60000,
     staleTime: 30000,
   });

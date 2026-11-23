@@ -146,5 +146,14 @@
       "valuation": "revaluation of {{name}}",
       "firstValuation": "first estimate of {{name}}"
     }
+  },
+  "demoWelcome": {
+    "title": "Welcome to the sample",
+    "text": "Alex Meyer doesn't exist. He has three accounts, stocks and crypto, a flat with a mortgage and four years of history. Change, add or delete anything – you can return the sample to its original state at any time.",
+    "links": {
+      "cashflow": "Where the money goes",
+      "stocks": "How the stocks are doing",
+      "projection": "What twenty years bring"
+    }
   }
 }

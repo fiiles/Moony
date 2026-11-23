@@ -30,6 +30,17 @@ export interface UserProfile {
   createdAt: number;
 }
 
+// Demo profile (Rust `models::demo`, ADR 0037)
+/** `demo_status`: readable with no profile open. */
+export interface DemoStatus {
+  /** A complete demo profile is stored and no real profile exists next to it. */
+  exists: boolean;
+  /** When the stored demo was last opened (unix seconds); null when there is none. */
+  lastOpenedAt: number | null;
+  /** The demo is the open profile right now (survives a webview reload). */
+  active: boolean;
+}
+
 // Biometric unlock on the phone (Rust `models::biometric`)
 /** Which biometry the phone offers, for the unlock button's icon and wording. */
 export type BiometryType = 'faceId' | 'touchId' | 'biometric' | 'windowsHello' | 'none';

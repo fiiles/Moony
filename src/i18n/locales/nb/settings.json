@@ -16,8 +16,11 @@
       "integrations": "Den lokale MCP-serveren for AI-assistenter.",
       "sync": "Holder enhetene dine i takt, ende-til-ende-kryptert.",
       "categorization": "Regelpakker, kategorier og dine egne kategoriseringsregler.",
-      "account": "Sletting av dataene dine fra denne datamaskinen."
-    }
+      "account": "Sletting av dataene dine fra denne datamaskinen.",
+      "demo": "Hva du kan gjøre med eksempeldataene, og hvordan du går over til din egen profil.",
+      "lockedInDemo": "Ikke tilgjengelig i eksempelet."
+    },
+    "demo": "Eksempel"
   },
   "profile": {
     "title": "Profil",
@@ -272,6 +275,23 @@
     "kit": {
       "title": "Gjenopprettingssett for synkronisering",
       "text": "Henter de synkroniserte dataene tilbake når alle enhetene er mistet. Ett for alle enhetene dine."
+    }
+  },
+  "demo": {
+    "title": "Eksempeldata",
+    "sub": "Oppdiktet profil for Alex Meyer",
+    "subToday": "Oppdiktet profil for Alex Meyer · åpnet i dag kl. {{time}}",
+    "subYesterday": "Oppdiktet profil for Alex Meyer · åpnet i går kl. {{time}}",
+    "subOn": "Oppdiktet profil for Alex Meyer · åpnet {{date}}",
+    "createHint": "Veiviseren tar deg gjennom passord, gjenopprettingsnøkkel og første konto. Eksempeldata overføres ikke til profilen.",
+    "resetHint": "Setter eksempelet tilbake til slik det var da du åpnet det første gang. Endringene dine i eksempelet går tapt.",
+    "exitHint": "Tar deg tilbake til startskjermen. Endringene i eksempelet blir værende, og du kan fortsette neste gang.",
+    "locked": {
+      "title": "{{section}} finnes i din egen profil",
+      "security": "Eksempelet har verken passord eller lås. Passord, automatisk låsing og opplåsing med fingeravtrykk setter du opp i din egen profil.",
+      "data": "Eksempelet trenger ingen sikkerhetskopi, du kan når som helst sette det tilbake til opprinnelig tilstand. Sikkerhetskopier og gjenoppretting hører til din egen profil.",
+      "sync": "Oppdiktede data synkroniseres ikke mellom enheter. Synkronisering slår du på i din egen profil.",
+      "integrations": "Den lokale MCP-serveren er slått av i eksempelet, slik at en assistent ikke tar oppdiktede tall for dine."
     }
   }
 }

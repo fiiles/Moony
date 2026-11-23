@@ -403,7 +403,9 @@
     "setupNotPrepared": "La creazione dell'account è stata interrotta. Torna indietro e crea di nuovo il tuo account.",
     "biometricInvalidated": "I dati biometrici sono cambiati. Sblocca con la password e riattiva lo sblocco biometrico.",
     "biometricCancelled": "Lo sblocco biometrico è stato annullato.",
-    "biometricFailed": "Verifica non riuscita. Sblocca con la password."
+    "biometricFailed": "Verifica non riuscita. Sblocca con la password.",
+    "notInDemo": "Questa funzione non è disponibile nel profilo di esempio. Crea il tuo profilo per usarla.",
+    "demoUnavailable": "Il profilo di esempio non è disponibile ora. Si può usare solo prima di creare il tuo profilo."
   },
   "time": {
     "today": "Oggi",
@@ -691,5 +693,23 @@
   "filterBadge": {
     "label": "Filtro: {{labels}}",
     "clear": "Rimuovi filtro"
+  },
+  "demo": {
+    "badge": "Esempio",
+    "sidebarText": "Stai guardando dati inventati. Quando vuoi iniziare con le tue finanze:",
+    "createProfile": "Crea il tuo profilo",
+    "accountRow": "Profilo di esempio",
+    "exit": "Esci dall'esempio",
+    "topBadge": "Dati di esempio",
+    "popoverTitle": "Stai guardando dati di esempio",
+    "popoverText": "Alex Meyer è inventato. Quello che modifichi qui resta nell'esempio e non passa al tuo profilo.",
+    "reset": {
+      "title": "Ripristina i dati originali",
+      "lead": "L'esempio torna allo stato in cui l'hai aperto la prima volta.",
+      "noticeTitle": "Le tue modifiche nell'esempio andranno perse",
+      "noticeText": "Tutto ciò che hai aggiunto, modificato o eliminato nell'esempio viene annullato. Il tuo profilo non ne è interessato.",
+      "confirm": "Ripristina i dati originali",
+      "done": "L'esempio è tornato allo stato originale"
+    }
   }
 }

@@ -16,13 +16,12 @@ use crate::services::real_estate as real_estate_service;
 use crate::services::real_estate_photos as photos_service;
 use crate::services::valuations::ValuationKind;
 use std::path::PathBuf;
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, State};
 use uuid::Uuid;
 
+/// The open profile's folder (ADR 0037): the demo's while the demo is open.
 fn data_dir(app: &AppHandle) -> Result<PathBuf> {
-    app.path()
-        .app_data_dir()
-        .map_err(|e| AppError::Internal(format!("Failed to get app data dir: {}", e)))
+    crate::services::profile_dir::open_profile_dir(app)
 }
 
 /// Get all real estate

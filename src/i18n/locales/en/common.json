@@ -403,7 +403,9 @@
     "setupNotPrepared": "Account setup was interrupted. Go back and create your account again.",
     "biometricInvalidated": "Biometrics changed. Unlock with your password and turn them on again.",
     "biometricCancelled": "Biometric unlock was cancelled.",
-    "biometricFailed": "Authentication failed, unlock with your password."
+    "biometricFailed": "Authentication failed, unlock with your password.",
+    "notInDemo": "This isn't available in the sample profile. Create your own profile to use it.",
+    "demoUnavailable": "The sample profile isn't available now. It can only be used before you create your own profile."
   },
   "time": {
     "today": "Today",
@@ -686,5 +688,23 @@
   "filterBadge": {
     "label": "Filter: {{labels}}",
     "clear": "Clear filter"
+  },
+  "demo": {
+    "badge": "Sample",
+    "sidebarText": "You're looking at made-up data. When you want to start with your own finances:",
+    "createProfile": "Create your own profile",
+    "accountRow": "Sample profile",
+    "exit": "Leave the sample",
+    "topBadge": "Sample data",
+    "popoverTitle": "You're viewing sample data",
+    "popoverText": "Alex Meyer is made up. Whatever you change here stays in the sample and does not carry over to your profile.",
+    "reset": {
+      "title": "Restore the original data",
+      "lead": "The sample goes back to how it was when you first opened it.",
+      "noticeTitle": "Your changes in the sample will be lost",
+      "noticeText": "Everything you added, edited or deleted in the sample is undone. Your own profile is not affected.",
+      "confirm": "Restore the original data",
+      "done": "The sample is back to its original state"
+    }
   }
 }

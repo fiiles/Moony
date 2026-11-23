@@ -32,6 +32,7 @@ use crate::models::sync::{
     SyncProfileState, SyncServerCheck, SyncStatus,
 };
 use crate::services::auth;
+use crate::services::profile_dir;
 use crate::services::sync::binding::{BindingFailure, BindingNative};
 use crate::services::sync::capture::bench::{self, Overhead};
 use crate::services::sync::connection_code::{parse_connection_code, server_address_from_input};
@@ -167,6 +168,7 @@ pub(crate) fn start_engine(app: &AppHandle, db: &Database) {
     if !engine_may_start(
         feature::enabled(),
         SYNC_CHANGE_RUNNING.load(Ordering::SeqCst),
+        profile_dir::demo_open(),
     ) {
         return;
     }
@@ -175,7 +177,8 @@ pub(crate) fn start_engine(app: &AppHandle, db: &Database) {
 
 /// `start_engine` without the sync-change check: what a sync change calls when it ends.
 fn spawn_engine(app: &AppHandle, db: &Database) {
-    if !feature::enabled() {
+    // The demo profile never syncs (ADR 0037).
+    if !feature::enabled() || profile_dir::demo_open() {
         return;
     }
     stop_engine(app);
@@ -273,6 +276,13 @@ pub(crate) async fn stop_engine_and_wait(app: &AppHandle) {
 /// `validation.syncUnavailable` while the flag is off.
 pub(super) fn require_feature() -> Result<()> {
     require_feature_with(feature::enabled)
+}
+
+/// [`require_feature`], and `auth.notInDemo` while the demo profile is open: the gate of the
+/// commands that set sync up, pair, join or sync (ADR 0037). Reading the sync state stays open.
+pub(super) fn require_feature_outside_demo() -> Result<()> {
+    require_feature()?;
+    profile_dir::ensure_not_demo()
 }
 
 fn require_feature_with(enabled: impl Fn() -> bool) -> Result<()> {
@@ -457,8 +467,8 @@ impl Drop for SyncChangeGuard {
 
 /// Whether `start_engine` starts the engine: the flag is on and no sync change runs (the change
 /// starts the engine itself when it ends).
-fn engine_may_start(flag_on: bool, change_running: bool) -> bool {
-    flag_on && !change_running
+fn engine_may_start(flag_on: bool, change_running: bool, demo_open: bool) -> bool {
+    flag_on && !change_running && !demo_open
 }
 
 /// The profile session a copy window belongs to: the profile's database file and the session
@@ -738,7 +748,7 @@ pub async fn sync_create_account(
     db: State<'_, Database>,
     relay_url: Option<String>,
 ) -> Result<SyncAccount> {
-    require_feature()?;
+    require_feature_outside_demo()?;
     let session = db.current_session()?;
     let url = relay_url
         .filter(|url| !url.trim().is_empty())
@@ -753,7 +763,7 @@ pub async fn sync_create_account(
 /// The input is never logged.
 #[tauri::command]
 pub async fn sync_check_server(input: String) -> Result<SyncServerCheck> {
-    require_feature()?;
+    require_feature_outside_demo()?;
     let address = server_address_from_input(&input)?;
     let relay = HttpRelay::new(&address)?;
     server::check_own_server(&relay, &address)
@@ -768,7 +778,7 @@ pub async fn sync_connect_own_server(
     db: State<'_, Database>,
     connection_code: String,
 ) -> Result<SyncAccount> {
-    require_feature()?;
+    require_feature_outside_demo()?;
     let code = parse_connection_code(&connection_code)?;
     let session = db.current_session()?;
     let relay = HttpRelay::new(&code.server_url)?;
@@ -793,7 +803,7 @@ pub async fn sync_start_checkout(
     db: State<'_, Database>,
     plan: SyncPlan,
 ) -> Result<CheckoutTarget> {
-    require_feature()?;
+    require_feature_outside_demo()?;
     let session = db.current_session()?;
     let relay = profile_relay(&session)?;
     setup::checkout_url(&relay, &session, plan)
@@ -812,7 +822,7 @@ pub async fn sync_prepare_recovery_kit(
     password: String,
 ) -> Result<RecoveryKit> {
     let password = Zeroizing::new(password);
-    require_feature()?;
+    require_feature_outside_demo()?;
     password_given(&password)?;
     verify_password(&app, password).await?;
     let owner = kit_owner(&app, &db)?;
@@ -902,7 +912,7 @@ pub async fn sync_finish_setup(
     db: State<'_, Database>,
     device_name: String,
 ) -> Result<SyncStatus> {
-    require_feature()?;
+    require_feature_outside_demo()?;
     let session = db.current_session()?;
     let relay = profile_relay(&session)?;
     let dir = data_dir(&app)?;
@@ -940,7 +950,7 @@ pub async fn sync_finish_setup(
 /// A round now, past any back-off. Nothing while no engine runs.
 #[tauri::command]
 pub async fn sync_now(app: AppHandle) -> Result<()> {
-    require_feature()?;
+    require_feature_outside_demo()?;
     wake_engine(&app);
     Ok(())
 }
@@ -1362,12 +1372,36 @@ mod tests {
 
     #[test]
     fn the_engine_does_not_start_during_a_sync_change() {
-        assert!(engine_may_start(true, false));
+        assert!(engine_may_start(true, false, false));
         assert!(
-            !engine_may_start(true, true),
+            !engine_may_start(true, true, false),
             "an unlock during a repair starts nothing: the repair restarts the engine itself"
         );
-        assert!(!engine_may_start(false, false), "the flag is off");
+        assert!(!engine_may_start(false, false, false), "the flag is off");
+    }
+
+    #[test]
+    fn the_demo_profile_never_starts_the_engine_or_sets_sync_up() {
+        assert!(
+            !engine_may_start(true, false, true),
+            "the demo is open: no engine"
+        );
+        {
+            let _demo = crate::services::profile_dir::demo_flag_for_test(true);
+            match require_feature_outside_demo() {
+                // A build without sync refuses with its own key first; with sync, the demo's.
+                Err(AppError::Auth(key)) => {
+                    assert_eq!(key, crate::services::profile_dir::NOT_IN_DEMO)
+                }
+                Err(AppError::Validation(key)) => assert_eq!(key, UNAVAILABLE),
+                other => panic!("expected a refusal, got {other:?}"),
+            }
+        }
+        assert_eq!(
+            require_feature_outside_demo().is_ok(),
+            require_feature().is_ok(),
+            "outside the demo it is the feature check alone"
+        );
     }
 
     #[test]
@@ -1594,12 +1628,34 @@ mod tests {
             {
                 continue;
             }
+            // Setting sync up, pairing, joining and syncing also refuse in the demo (ADR 0037).
+            let gate = if DEMO_GATED.contains(&name.as_str()) {
+                "require_feature_outside_demo()?"
+            } else {
+                "require_feature()?"
+            };
             assert!(
-                first_three.contains("require_feature()?"),
-                "`{name}` must call `require_feature()?` within its first three statements"
+                first_three.contains(gate),
+                "`{name}` must call `{gate}` within its first three statements"
             );
         }
     }
+
+    /// The sync commands the demo profile refuses (`require_feature_outside_demo`).
+    const DEMO_GATED: [&str; 12] = [
+        "sync_create_account",
+        "sync_check_server",
+        "sync_connect_own_server",
+        "sync_start_checkout",
+        "sync_prepare_recovery_kit",
+        "sync_save_recovery_kit",
+        "sync_finish_setup",
+        "sync_now",
+        "sync_pairing_start",
+        "sync_pairing_scan",
+        "sync_pairing_join",
+        "sync_join_with_recovery_kit",
+    ];
 
     /// The body of `name` in this file's code above the tests, up to its closing brace.
     fn command_body(name: &str) -> &'static str {

@@ -375,6 +375,15 @@ pub fn set_current_with_revision(quotes: Quotes, fetched_at: i64) {
     });
 }
 
+/// Back to the state of a fresh start: no quotes and never fetched. Used when a session whose
+/// rates must not reach the next profile ends (the demo profile's built-in rates, ADR 0037): the
+/// next profile then loads its own stored rates, or counts as never refreshed.
+pub fn clear_current() {
+    with_store(|s| {
+        *s.write().unwrap_or_else(|e| e.into_inner()) = CurrentStore::empty();
+    });
+}
+
 /// Test helper: replaces the (thread-local) snapshot with these units-per-EUR quotes.
 #[cfg(test)]
 pub(crate) fn set_current_for_test(units_per_eur: &[(&str, f64)]) {
@@ -627,6 +636,18 @@ mod tests {
         assert_eq!(quotes.reference(), "CZK");
         assert_eq!(fetched_at, Some(1_700_000_000));
         assert_eq!(snapshot().revision, 1_700_000_000);
+    }
+
+    #[test]
+    fn clearing_the_store_forgets_quotes_and_revision() {
+        let mut q = Quotes::new(REFERENCE);
+        q.insert("USD", 1.1);
+        set_current_with_revision(q, 1_700_000_000);
+        clear_current();
+        assert_eq!(current_fetched_at(), None);
+        assert_eq!(current_revision(), 0);
+        assert_eq!(current().reference(), REFERENCE);
+        assert!(current().convert(1.0, "USD", REFERENCE).is_none());
     }
 
     #[test]

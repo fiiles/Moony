@@ -51,13 +51,14 @@ const ACTIVITY_EVENTS = ['pointerdown', 'keydown', 'wheel', 'touchstart'] as con
 /**
  * Locks the app (the sidebar's "Lock application" mutation) after the configured
  * minutes without input, and on wake-up when that time has passed while the
- * computer slept or the window was hidden. Inert while locked or when off.
+ * computer slept or the window was hidden. Inert while locked, when off and in the demo.
  */
 export function useAutoLock(): void {
-  const { user, lockMutation } = useAuth();
+  const { user, lockMutation, isDemo } = useAuth();
   const [, setLocation] = useLocation();
   const [minutes] = useAutoLockMinutes();
-  const enabled = user !== null && minutes > 0;
+  // The demo has no password and no lock (ADR 0037): a lock would only end it.
+  const enabled = user !== null && minutes > 0 && !isDemo;
 
   // The latest lock action, so the listeners below are not re-attached on every render.
   // Resolves false when locking failed (useAuth's onError already showed the toast).

@@ -1,0 +1,858 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Moony · Akciové transakce</title>
+<!-- Static Czech design prototype of the desktop-only report "Akciové transakce" (2026-11-23).
+     Fictional data, no API calls, no persistence. "Today" is fixed at 23. 11. 2026.
+     The numbers are computed in the page: sells are matched with the oldest buys (FIFO), every trade is
+     converted to CZK at a fictional rate of its own day, and the holding-period test splits the matched
+     lots into exempt and taxable ones.
+     Design contract: ../design-system/{tokens,moony}.css (linked, not inlined, so it follows the design system).
+     Font: Inter from node_modules (falls back to the system font). Icons: Lucide (ISC) via icons.js.
+     Production needs all ten locales. -->
+<link rel="stylesheet" href="../../node_modules/@fontsource-variable/inter/index.css">
+<link rel="stylesheet" href="../design-system/moony.css">
+<style>
+  html { overflow-y: scroll; }
+
+  /* ---- Prototype bar (not part of the app) ---- */
+  .proto { position: sticky; top: 0; z-index: 6; display: flex; align-items: center; gap: 14px; height: 42px; padding: 0 20px; background: var(--dark-grad); box-shadow: var(--sh-dark); color: var(--ink-inverse-2); font-size: 11px; font-weight: 550; }
+  .proto__tag { padding: 3px 7px; border-radius: 5px; border: 1px solid var(--ink-inverse-2); color: var(--ink-inverse); font-size: 9px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
+  .proto b { color: var(--ink-inverse); font-weight: 650; }
+  .proto__spacer { flex: 1; }
+  .sidebar { top: 42px; height: calc(100vh - 42px); }
+  .app { min-height: calc(100vh - 42px); }
+
+  /* ---- Page head: period ---- */
+  .stepper { display: inline-flex; align-items: center; gap: 2px; height: var(--control-h); padding: 0 3px; border: 1px solid var(--line-strong); border-radius: var(--r-2); background: linear-gradient(var(--paper), var(--paper-2)); box-shadow: var(--sh-btn); }
+  .stepper button { display: grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: var(--r-1); background: none; color: var(--ink-3); }
+  .stepper button:hover { background: var(--ink-hover); color: var(--ink); }
+  .stepper button[disabled] { opacity: .35; pointer-events: none; }
+  .stepper b { min-width: 46px; text-align: center; font-size: var(--fs-table); font-weight: 650; font-variant-numeric: tabular-nums; }
+  .range-inputs { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-4); font-size: var(--fs-caption); }
+  .range-inputs .input { width: 132px; height: var(--control-h); font-size: var(--fs-table); }
+  .is-hidden { display: none !important; }
+
+  /* ---- Info button + explanatory tooltip (wide variant of .tip) ---- */
+  .info { display: inline-grid; place-items: center; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--ink-4); vertical-align: -4px; cursor: help; }
+  .info:hover, .info[aria-expanded="true"] { color: var(--ink); background: var(--ink-hover); }
+  .tip { position: fixed; left: 0; top: 0; opacity: 0; transition: opacity var(--t-fast); }
+  .tip.is-on { opacity: 1; }
+  .tip--explain { width: 304px; padding: 12px 13px; border-radius: 9px; white-space: normal; font-size: var(--fs-caption); font-weight: 500; line-height: 1.5; color: var(--ink-inverse-2); }
+  .tip--explain b { display: block; margin-bottom: 4px; font-size: var(--fs-table); font-weight: 650; }
+  .tip--explain p { margin: 0 0 7px; }
+  .tip--explain p:last-child { margin: 0; }
+  .tip--explain em { font-style: normal; color: var(--ink-inverse); font-weight: 600; }
+
+  /* ---- Hero: result + income / cost / result split ---- */
+  .hero { margin-bottom: 17px; padding-bottom: 18px; }
+  .hero__delta b.badge { margin-right: 3px; }
+  .hero__aside small { display: block; color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; }
+  .split { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--line-soft); }
+  .split__head { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 11px; }
+  .split__opts { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px 24px; min-height: 46px; margin-bottom: 10px; padding: 8px 12px; border-radius: var(--r-2); background: var(--well); }
+  .tt { display: inline-flex; align-items: center; gap: 9px; color: var(--ink-2); font-size: var(--fs-caption); font-weight: 650; }
+  .tt .switch { margin-left: 2px; }
+  .select--sm { height: 30px; width: 112px; padding: 0 28px 0 10px; font-size: var(--fs-caption); font-weight: 600; }
+  .tt__custom .input { width: 92px; height: 30px; padding: 0 42px 0 10px; font-size: var(--fs-caption); font-weight: 600; }
+  .sgrid { display: grid; grid-template-columns: minmax(150px, 1fr) repeat(5, minmax(88px, 132px)); column-gap: 12px; align-items: center; }
+  .sgrid--head { min-height: 30px; padding-bottom: 7px; align-items: end; line-height: 1.35; color: var(--ink-3); font-size: var(--fs-thead); font-weight: var(--fw-thead); letter-spacing: var(--ls-thead); text-transform: uppercase; border-bottom: 1px solid var(--line-soft); }
+  .sgrid--row { min-height: 46px; border-bottom: 1px solid var(--line-soft); color: var(--ink-2); font-size: var(--fs-table); font-weight: var(--fw-table); }
+  .sgrid--row b { display: block; color: var(--ink); font-weight: 650; }
+  .sgrid--row small { display: block; margin-top: 2px; color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; }
+  .sgrid--row.is-key .cell--num { color: var(--ink); font-weight: 650; }
+  .sgrid--total { border-bottom: 0; }
+  .sgrid--total .cell--num { color: var(--ink); font-weight: 650; }
+  .split__note { margin: 12px 0 0; color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; line-height: 1.6; }
+  .split__alert { margin-top: 12px; }
+
+  /* ---- Monthly bars ---- */
+  .page { min-width: 0; }
+  .rep-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: stretch; margin-bottom: 17px; }
+  .rep-grid .card { display: flex; flex-direction: column; min-width: 0; }
+  .rep-grid .card__body { display: flex; flex-direction: column; padding-top: 0; flex: 1; }
+  .bars-wrap { position: relative; display: flex; flex-direction: column; flex: 1; margin-right: 46px; }
+  .bars { position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; flex: 1; min-height: 170px; }
+  .bars__line { position: absolute; left: 0; right: 0; height: 1px; background: var(--chart-grid); }
+  .bars__line span { font-style: normal; position: absolute; left: 100%; top: -7px; width: 46px; text-align: right; color: var(--chart-axis); font-size: var(--fs-micro); font-weight: 500; font-variant-numeric: tabular-nums; }
+  .bars__col { position: relative; z-index: 1; display: flex; align-items: flex-end; justify-content: center; gap: 2px; height: 100%; padding: 0 2px; border: 0; border-radius: var(--r-1) var(--r-1) 0 0; background: none; }
+  .bars__col:hover { background: var(--well); }
+  .bars__bar { width: 38%; max-width: 13px; border-radius: 3px 3px 0 0; }
+  .bars__bar--buy { background: var(--s1); }
+  .bars__bar--sell { background: var(--s3); }
+  .bars__col.is-dim .bars__bar { opacity: .35; }
+  .bars__axis { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; margin-top: 6px; color: var(--chart-axis); font-size: var(--fs-micro); font-weight: 500; text-align: center; }
+  .bars__axis .is-sel { color: var(--ink-2); font-weight: 650; }
+
+  /* ---- Result by ticker ---- */
+  .trow { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(56px, 1fr) auto; gap: 12px; align-items: center; min-height: 50px; border-bottom: 1px solid var(--line-soft); }
+  .trow:last-child { border-bottom: 0; }
+  .trow .entity { min-width: 0; }
+  .trow .entity > div { min-width: 0; }
+  .trow .entity b, .trow .entity small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dbar { position: relative; height: 8px; }
+  .dbar__zero { position: absolute; top: -4px; bottom: -4px; width: 1px; background: var(--line-strong); }
+  .dbar__fill { position: absolute; top: 0; height: 8px; border-radius: 3px; background: var(--s1); }
+  .dbar__fill--neg { background: var(--s3); }
+  .trow__v { text-align: right; font-size: var(--fs-table); font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .trow__more { padding-top: 12px; margin-top: auto; }
+  .trow__v small { display: block; margin-top: 2px; color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; }
+
+  /* ---- Upcoming holding-period dates (milestone rows, README §6) ---- */
+  #upcoming { margin-bottom: 17px; }
+  .agenda { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 28px; }
+  .logo, .avatar { font-style: normal; }
+  .ms { display: flex; gap: 12px; align-items: center; min-width: 0; min-height: 58px; }
+  .ms:nth-child(n+3) { border-top: 1px solid var(--line-soft); }
+  .ms__chip { flex: none; display: grid; place-content: center; width: 60px; height: 42px; border-radius: var(--r-2); background: var(--well); text-align: center; }
+  .ms__chip b { display: block; font-size: var(--fs-table); font-weight: 650; }
+  .ms__chip small { display: block; color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; }
+  .ms__chip.is-soon { background: var(--dark); color: var(--ink-inverse); }
+  .ms__chip.is-soon small { color: var(--ink-inverse-2); }
+  .ms__t { flex: 1; min-width: 0; }
+  .ms__t b { display: block; font-size: var(--fs-table); font-weight: 650; }
+  .ms__t small { display: block; margin-top: 2px; color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms__v { flex: none; text-align: right; font-size: var(--fs-table); font-weight: 650; font-variant-numeric: tabular-nums; }
+  .ms__v small { display: block; margin-top: 2px; color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; }
+  .upcoming__foot { margin: 10px 0 0; padding-top: 12px; border-top: 1px solid var(--line-soft); color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; }
+
+  /* ---- Modal with every open lot ---- */
+  .modal--wide { width: 800px; }
+  .modal__tools { display: flex; align-items: center; gap: 16px; padding: 14px 27px; }
+  .modal__list { max-height: min(54vh, 480px); overflow-y: auto; border-top: 1px solid var(--line); }
+  .t-up { border-top: 0; }
+  .t-up .table__head, .t-up .table__row { grid-template-columns: 92px minmax(0, 1fr) 124px 108px 122px; column-gap: 12px; padding: 0 27px; }
+  .t-up .table__head { position: sticky; top: 0; z-index: 1; }
+  .t-up .table__row { min-height: 60px; }
+  .t-up .ms__chip { width: 88px; }
+
+  /* ---- Tables ---- */
+  .subbar__spacer { flex: 1; }
+  .card__head .toolbar { flex: none; }
+  .seg__btn { white-space: nowrap; }
+  .subbar { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 21px 14px; }
+  .t-sales .table__head, .t-sales .table__row { grid-template-columns: 18px 78px minmax(0, 1fr) 112px 112px 112px 124px; column-gap: 10px; }
+  .t-sales.no-test .table__head, .t-sales.no-test .table__row { grid-template-columns: 18px 78px minmax(0, 1fr) 112px 112px 112px 84px; }
+  .t-all .table__head, .t-all .table__row { grid-template-columns: 78px 92px minmax(0, 1fr) 56px 108px 114px 80px; column-gap: 10px; }
+  @media (max-width: 1239px) {
+    .trow { grid-template-columns: minmax(0, 1fr) 44px auto; gap: 10px; }
+    .card__head .search { width: 170px; }
+    .t-sales .table__head, .t-sales .table__row { grid-template-columns: 16px 78px minmax(0, 1fr) 94px 104px 98px 110px; column-gap: 8px; }
+    .t-sales.no-test .table__head, .t-sales.no-test .table__row { grid-template-columns: 16px 78px minmax(0, 1fr) 94px 104px 98px 84px; }
+    .t-all .table__head, .t-all .table__row { grid-template-columns: 78px 86px minmax(0, 1fr) 40px 94px 100px 70px; column-gap: 8px; }
+  }
+  .table__row .entity { min-width: 0; }
+  .table__row .entity > div { min-width: 0; }
+  .table__row .entity b, .table__row .entity small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .c2 small { display: block; margin-top: 3px; color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; white-space: nowrap; }
+  .c2 .badge { margin-top: 3px; }
+  .amt { font-weight: 650; }
+  .chev { color: var(--ink-4); transition: transform var(--t-fast); }
+  .is-open > .chev-cell .chev { transform: rotate(90deg); }
+  .lot { min-height: 46px; background: var(--well); color: var(--ink-3); }
+  .lot:hover { background: var(--well); }
+  .lot .lot__what { color: var(--ink-2); }
+  .lot .lot__what small { white-space: normal; }
+  .sumrow { background: var(--well); color: var(--ink); font-weight: 650; }
+  .sumrow:hover { background: var(--well); }
+  .kind { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); font-weight: 600; }
+  .kind i { color: var(--chart-line); font-style: normal; font-size: 10px; }
+  .kind--div i { color: var(--gain); font-size: 12px; font-weight: 700; }
+  .test-cell { text-align: right; }
+  .test-cell small { display: block; margin-top: 3px; color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; white-space: nowrap; }
+  .badge--filter { gap: 6px; padding-right: 3px; }
+  .badge--filter button { display: grid; place-items: center; width: 16px; height: 16px; padding: 0; border: 0; border-radius: 4px; background: none; color: var(--ink-inverse-2); }
+  .badge--filter button:hover { color: var(--ink-inverse); }
+</style>
+</head>
+<body>
+
+<div class="proto">
+  <span class="proto__tag">Prototyp</span>
+  <span><b>Akciové transakce</b> · report jen pro desktop · fiktivní data, dnešek je 23. 11. 2026</span>
+  <span class="proto__spacer"></span>
+  <div class="seg" id="theme-seg"><button class="seg__btn is-active" data-value="light">Světlý</button><button class="seg__btn" data-value="dark">Tmavý</button></div>
+</div>
+
+<div class="app">
+  <aside class="sidebar"></aside>
+  <main class="page">
+    <div class="topbar">
+      <nav class="crumb"><a href="#">Nástroje</a><i>›</i><b>Akciové transakce</b></nav>
+      <span class="status status--fresh">Data aktuální</span>
+    </div>
+
+    <div class="page-head">
+      <div>
+        <div class="eyebrow">Nástroje<span class="sep">·</span>Akcie</div>
+        <h1>Akciové transakce</h1>
+        <p>Nákupy, prodeje a výsledek z prodejů za zvolené období. Podklad pro daně, ne daňové přiznání.</p>
+      </div>
+      <div class="actions">
+        <div class="stepper" id="stepper">
+          <button type="button" id="year-prev" aria-label="Předchozí rok"></button>
+          <b id="year-label"></b>
+          <button type="button" id="year-next" aria-label="Další rok"></button>
+        </div>
+        <div class="range-inputs is-hidden" id="range">
+          <input class="input" type="date" id="from" aria-label="Od"><span>–</span><input class="input" type="date" id="to" aria-label="Do">
+        </div>
+        <div class="seg seg--lg" id="mode-seg">
+          <button class="seg__btn is-active" data-value="year">Rok</button><button class="seg__btn" data-value="custom">Vlastní období</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hero: the result of the period and its split by the holding-period test -->
+    <section class="card hero">
+      <div class="hero__head">
+        <div>
+          <div class="hero__label" id="hero-label"></div>
+          <b class="hero__value" id="hero-value"></b>
+          <div class="hero__delta" id="hero-delta"></div>
+        </div>
+        <div class="hero__aside" id="hero-aside"></div>
+      </div>
+      <div class="split">
+        <div class="split__head">
+          <h3>Příjmy, nabývací cena a výsledek</h3>
+        </div>
+        <div class="split__opts">
+          <div class="tt">
+            <span>Nabývací cena</span>
+            <button type="button" class="info" data-tip="fifo" aria-label="Jak se určuje nabývací cena"></button>
+            <div class="seg" id="method-seg">
+              <button class="seg__btn is-active" data-value="fifo">Nejstarší nákupy</button><button class="seg__btn" data-value="avg">Vážený průměr</button>
+            </div>
+          </div>
+          <div class="tt">
+            <label for="test-on">Časový test</label>
+            <button type="button" class="info" data-tip="timeTest" aria-label="Co je časový test"></button>
+            <span class="switch"><input type="checkbox" id="test-on" checked></span>
+            <span class="select-wrap" id="test-len-wrap">
+              <select class="select select--sm" id="test-len" aria-label="Doba držení pro časový test">
+                <option value="6">6 měsíců</option><option value="12">1 rok</option><option value="24">2 roky</option>
+                <option value="36" selected>3 roky</option><option value="60">5 let</option><option value="120">10 let</option><option value="custom">Vlastní…</option>
+              </select>
+            </span>
+            <span class="input-wrap tt__custom is-hidden" id="test-custom-wrap">
+              <input class="input" id="test-custom" type="number" min="1" max="600" step="1" value="18" aria-label="Doba držení v měsících"><span class="unit">měs.</span>
+            </span>
+          </div>
+        </div>
+        <div id="split-table"></div>
+        <div id="split-alert"></div>
+        <p class="split__note">
+          Každý obchod je přepočten na Kč kurzem ze dne obchodu
+          <button type="button" class="info" data-tip="fx" aria-label="Jak se přepočítává měna"></button>
+          · <span id="note-method"></span>
+          · dividendy se do výsledku nepočítají.
+        </p>
+      </div>
+    </section>
+
+    <div class="stats" id="stats"></div>
+
+    <div class="rep-grid">
+      <section class="card">
+        <div class="card__head">
+          <div><h2 class="card__title">Nákupy a prodeje v čase</h2><p class="card__sub" id="bars-sub"></p></div>
+        </div>
+        <div class="card__body">
+          <div class="bars-wrap"><div class="bars" id="bars"></div><div class="bars__axis" id="bars-axis"></div></div>
+          <div class="legend">
+            <span class="legend__item"><i class="legend__swatch legend__swatch--block" style="background:var(--s1)"></i>Nákupy <b id="lg-buy"></b></span>
+            <span class="legend__item"><i class="legend__swatch legend__swatch--block" style="background:var(--s3)"></i>Prodeje <b id="lg-sell"></b></span>
+          </div>
+        </div>
+      </section>
+      <section class="card">
+        <div class="card__head">
+          <div><h2 class="card__title">Výsledek podle titulu</h2><p class="card__sub" id="tick-sub"></p></div>
+        </div>
+        <div class="card__body" id="tickers"></div>
+      </section>
+    </div>
+
+    <!-- Only with the holding-period test on -->
+    <section class="card card--flat" id="upcoming">
+      <div class="card__head">
+        <div><h2 class="card__title">Blíží se časový test</h2><p class="card__sub" id="up-sub"></p></div>
+        <button class="btn btn--sm" type="button" id="up-all"></button>
+      </div>
+      <div class="card__body" style="padding-top:0">
+        <div class="agenda" id="agenda"></div>
+        <p class="upcoming__foot" id="up-foot"></p>
+      </div>
+    </section>
+
+    <section class="card card--table">
+      <div class="card__head">
+        <div><h2 class="card__title" id="tbl-title"></h2><p class="card__sub" id="tbl-sub"></p></div>
+        <div class="toolbar">
+          <div class="input-wrap search" id="search-wrap"><input class="input" id="q" placeholder="Hledat titul" aria-label="Hledat titul"></div>
+          <div class="seg" id="view-seg">
+            <button class="seg__btn is-active" data-value="sales">Výsledek prodejů</button><button class="seg__btn" data-value="all">Všechny transakce</button>
+          </div>
+        </div>
+      </div>
+      <div class="subbar">
+        <div class="seg" id="cls-seg">
+          <button class="seg__btn is-active" data-value="all">Vše</button><button class="seg__btn" data-value="taxable">Podléhá dani</button><button class="seg__btn" data-value="exempt">Osvobozeno</button>
+        </div>
+        <div class="seg is-hidden" id="type-seg">
+          <button class="seg__btn is-active" data-value="all">Vše</button><button class="seg__btn" data-value="buy">Nákupy</button><button class="seg__btn" data-value="sell">Prodeje</button><button class="seg__btn" data-value="div">Dividendy</button>
+        </div>
+        <span id="filter-badge"></span>
+        <span class="subbar__spacer"></span>
+        <button class="btn btn--sm is-hidden" type="button" id="export" title="Exportuje záznamy, které tabulka právě ukazuje."></button>
+      </div>
+      <div id="tbl"></div>
+    </section>
+  </main>
+</div>
+
+<!-- All open lots and the holding-period test -->
+<div class="modal-scrim" id="up-modal">
+  <div class="modal modal--wide" role="dialog" aria-modal="true" aria-labelledby="up-modal-title">
+    <div class="modal__head">
+      <div><h2 id="up-modal-title">Časový test otevřených pozic</h2><p id="up-modal-sub"></p></div>
+      <button class="modal__close" type="button" id="up-close" aria-label="Zavřít"></button>
+    </div>
+    <div class="modal__tools"><div class="seg" id="up-seg"></div></div>
+    <div class="modal__list" id="up-list"></div>
+    <div class="modal__foot"><button class="btn btn--ghost" type="button" id="up-close-2">Zavřít</button><span class="faint" id="up-modal-foot" style="font-size:10px;font-weight:500"></span></div>
+  </div>
+</div>
+
+<div class="tip" id="tip" role="tooltip"></div>
+
+<script src="../design-system/icons.js"></script>
+<script src="../design-system/shell.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- Icons this prototype needs beyond icons.js (Lucide, ISC) ---------- */
+  ICONS["chevron-left"] = '<path d="m15 18-6-6 6-6"/>';
+  ICONS["clipboard-list"] = '<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/>';
+
+  /* ---------- Sidebar: today's IA (nav-config.ts) with the new item in Nástroje ---------- */
+  var NAV = [
+    { items: [["Přehled", "layout-dashboard"]] },
+    { title: "Peníze", items: [["Bankovní účty", "landmark"], ["Cashflow", "chart-column"], ["Výdajové plány", "clipboard-list"]] },
+    { title: "Investice", items: [["Akcie", "trending-up"], ["Krypto", "bitcoin"], ["Dluhopisy", "file-text"], ["Nemovitosti", "house"], ["Ostatní aktiva", "gem"]] },
+    { title: "Závazky a pojištění", items: [["Úvěry", "credit-card"], ["Pojištění", "shield"]] },
+    { title: "Nástroje", items: [["Plánování cashflow", "repeat"], ["Projekce", "chart-line"], ["Analýza akcií", "tag"], ["Akciové transakce", "receipt", true], ["Sledování akcií", "chart-candlestick"], ["Anuitní kalkulačka", "calculator"], ["Investice do nemovitosti", "building"]] }
+  ];
+  (function () {
+    var h = '<div class="brand"><i class="moon"></i><div><b>moony</b><small>Osobní finance</small></div></div><div class="sidebar__scroll">';
+    NAV.forEach(function (g) {
+      h += '<div class="nav-group">' + (g.title ? '<button type="button" class="nav-group__title"><span>' + g.title + "</span>" + icon("chevron-down", 12) + "</button>" : "") + '<div class="nav">' +
+        g.items.map(function (i) { return '<button type="button" class="nav__item' + (i[2] ? " is-active" : "") + '">' + icon(i[1]) + "<span>" + i[0] + "</span></button>"; }).join("") + "</div></div>";
+    });
+    h += '</div><div class="sidebar__foot"><button type="button" class="account"><i class="avatar">JN</i><div><b>Jana Nováková</b><small>Účet a zámek aplikace</small></div></button></div>';
+    document.querySelector(".sidebar").innerHTML = h;
+  })();
+
+  /* ---------- Fictional data ---------- */
+  var TODAY = "2026-11-23";
+  var T = {
+    "AAPL":    { name: "Apple",                    cur: "USD", now: 246.10, logo: "" },
+    "MSFT":    { name: "Microsoft",                cur: "USD", now: 471.30, logo: "logo--2" },
+    "NVDA":    { name: "NVIDIA",                   cur: "USD", now: 124.60, logo: "logo--3" },
+    "KO":      { name: "Coca-Cola",                cur: "USD", now: 70.20,  logo: "logo--4" },
+    "META":    { name: "Meta Platforms",           cur: "USD", now: 742.00, logo: "logo--3" },
+    "BA":      { name: "Boeing",                   cur: "USD", now: 168.00, logo: "logo--2" },
+    "PYPL":    { name: "PayPal",                   cur: "USD", now: 63.40,  logo: "logo--3" },
+    "CEZ.PR":  { name: "ČEZ",                      cur: "CZK", now: 1290,   logo: "" },
+    "VWCE.DE": { name: "Vanguard FTSE All-World",  cur: "EUR", now: 153.40, logo: "logo--4" },
+    "ASML.AS": { name: "ASML Holding",             cur: "EUR", now: 705.00, logo: "logo--2" }
+  };
+  /* date, type, ticker, quantity, price per unit (native), fee (native) */
+  var TX = [
+    ["2021-03-15", "buy", "AAPL", 20, 123.50, 1], ["2021-07-20", "buy", "PYPL", 5, 291.00, 1], ["2021-09-10", "buy", "VWCE.DE", 30, 104.20, 2],
+    ["2022-01-18", "buy", "MSFT", 10, 302.00, 1], ["2022-10-12", "buy", "CEZ.PR", 60, 742, 45],
+    ["2023-02-07", "buy", "NVDA", 40, 22.10, 1], ["2023-05-22", "buy", "VWCE.DE", 25, 98.60, 2], ["2023-11-29", "buy", "AAPL", 10, 189.40, 1],
+    ["2024-01-16", "buy", "MSFT", 8, 389.00, 1], ["2024-02-08", "buy", "BA", 12, 209.00, 1], ["2024-06-18", "buy", "NVDA", 30, 131.00, 1], ["2024-09-03", "buy", "ASML.AS", 6, 792.00, 3],
+    ["2025-01-21", "buy", "CEZ.PR", 40, 934, 45], ["2025-03-11", "buy", "VWCE.DE", 20, 127.40, 2], ["2025-04-09", "buy", "AAPL", 12, 172.80, 1],
+    ["2025-05-14", "sell", "NVDA", 20, 129.50, 1], ["2025-06-10", "buy", "META", 8, 612.00, 1], ["2025-08-19", "buy", "KO", 50, 69.10, 1], ["2025-11-05", "sell", "CEZ.PR", 30, 1218, 45], ["2025-12-09", "sell", "PYPL", 5, 61.20, 1],
+    ["2026-01-14", "buy", "VWCE.DE", 18, 141.30, 2], ["2026-02-10", "sell", "AAPL", 25, 238.40, 1], ["2026-02-24", "buy", "MSFT", 5, 402.00, 1],
+    ["2026-03-18", "sell", "NVDA", 35, 152.40, 1], ["2026-04-07", "buy", "NVDA", 15, 108.50, 1], ["2026-04-28", "sell", "BA", 12, 186.50, 1],
+    ["2026-06-09", "sell", "MSFT", 10, 468.00, 1], ["2026-06-16", "buy", "VWCE.DE", 18, 146.80, 2], ["2026-07-21", "sell", "VWCE.DE", 30, 148.90, 2],
+    ["2026-08-05", "buy", "ASML.AS", 3, 688.00, 3], ["2026-08-18", "sell", "META", 8, 768.00, 1], ["2026-09-08", "sell", "CEZ.PR", 30, 1304, 45], ["2026-09-22", "buy", "KO", 30, 66.40, 1],
+    ["2026-10-13", "buy", "VWCE.DE", 18, 152.10, 2], ["2026-10-27", "sell", "KO", 50, 78.60, 1], ["2026-11-10", "sell", "ASML.AS", 4, 712.00, 3]
+  ];
+  /* Gross dividends per share (native currency): ex-date, ticker, amount per share.
+     The payout is the amount per share times the shares held before that day, as in the app. */
+  var DIVP = [
+    ["2025-02-13", "AAPL", 0.25], ["2025-03-13", "MSFT", 0.83], ["2025-05-06", "ASML.AS", 1.52], ["2025-05-15", "AAPL", 0.26], ["2025-06-12", "MSFT", 0.83],
+    ["2025-08-04", "CEZ.PR", 47], ["2025-08-14", "AAPL", 0.26], ["2025-09-11", "MSFT", 0.83], ["2025-09-22", "META", 0.52], ["2025-10-01", "KO", 0.51],
+    ["2025-11-04", "ASML.AS", 1.60], ["2025-11-13", "AAPL", 0.26], ["2025-12-11", "MSFT", 0.91], ["2025-12-15", "KO", 0.51], ["2025-12-22", "META", 0.52],
+    ["2026-02-12", "AAPL", 0.26], ["2026-03-12", "MSFT", 0.91], ["2026-03-23", "META", 0.52], ["2026-04-01", "KO", 0.53], ["2026-05-06", "ASML.AS", 1.60],
+    ["2026-05-14", "AAPL", 0.27], ["2026-06-11", "MSFT", 0.91], ["2026-06-22", "META", 0.52], ["2026-07-01", "KO", 0.53], ["2026-08-03", "CEZ.PR", 52],
+    ["2026-08-13", "AAPL", 0.27], ["2026-09-10", "MSFT", 0.91], ["2026-10-01", "KO", 0.53], ["2026-11-04", "ASML.AS", 1.60], ["2026-11-12", "AAPL", 0.27]
+  ];
+  var FXB = { USD: { 2021: 21.7, 2022: 23.4, 2023: 22.2, 2024: 23.2, 2025: 21.9, 2026: 21.1 }, EUR: { 2021: 25.6, 2022: 24.6, 2023: 24.0, 2024: 25.1, 2025: 24.9, 2026: 24.4 } };
+  function rate(cur, d) {
+    if (cur === "CZK") return 1;
+    var y = +d.slice(0, 4), m = +d.slice(5, 7), day = +d.slice(8);
+    var w = (cur === "USD" ? 0.45 : 0.14) * Math.sin(y * 2.1 + m * 0.9 + day * 0.05);
+    return Math.round((FXB[cur][y] + w) * 1000) / 1000;
+  }
+
+  /* ---------- Dates ---------- */
+  var MONTHS = ["leden", "únor", "březen", "duben", "květen", "červen", "červenec", "srpen", "září", "říjen", "listopad", "prosinec"];
+  function pd(s) { return new Date(Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8))); }
+  function iso(d) { return d.toISOString().slice(0, 10); }
+  function day(s) { var d = pd(s); return d.getUTCDate() + ". " + (d.getUTCMonth() + 1) + ". " + d.getUTCFullYear(); }
+  function dayShort(s) { var d = pd(s); return d.getUTCDate() + ". " + (d.getUTCMonth() + 1) + "."; }
+  function addMonths(s, n) { var d = pd(s); return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + n, d.getUTCDate())); }
+  function daysBetween(a, b) { return Math.round((pd(b) - pd(a)) / 864e5); }
+  function monthsBetween(a, b) { var A = pd(a), B = pd(b); var m = (B.getUTCFullYear() - A.getUTCFullYear()) * 12 + B.getUTCMonth() - A.getUTCMonth(); if (B.getUTCDate() < A.getUTCDate()) m--; return m; }
+  function plural(n, one, few, many) { return n === 1 ? one : (n >= 2 && n <= 4 ? few : many); }
+  function held(a, b) {
+    var m = monthsBetween(a, b);
+    if (m < 1) { var d = daysBetween(a, b); return d + " " + plural(d, "den", "dny", "dní"); }
+    var y = Math.floor(m / 12), r = m % 12;
+    return (y ? y + " r" : "") + (y && r ? " " : "") + (r ? r + " měs" : "");
+  }
+  /* The test is met when the sale comes after the holding period has fully passed. */
+  function isExempt(buy, sell, months) { return pd(sell) > addMonths(buy, months); }
+
+  /* ---------- Formatting ---------- */
+  function kc(n) { return fmtKc(Math.round(n)); }
+  function sgn(n) { n = Math.round(n); return n === 0 ? fmtKc(0) : fmtSigned(n); }
+  function sgnCls(n) { n = Math.round(n); return n > 0 ? "gain" : (n < 0 ? "loss" : ""); }
+  function num(n, dec) { return fmtKc(n, dec).replace(/\s*Kč$/, ""); }
+  function native(n, cur) { return num(n, cur === "CZK" && n % 1 === 0 ? 0 : 2) + " " + (cur === "CZK" ? "Kč" : cur); }
+  function qty(n) { return num(n, 0) + " ks"; }
+  function changeBadge(pct) {
+    var r = Math.round(pct * 10) / 10;
+    if (r === 0) return '<b class="badge">0 %</b>';
+    return '<b class="badge badge--' + (r > 0 ? "gain" : "loss") + '">' + (r > 0 ? "▲ " : "▼ ") + String(Math.abs(r).toFixed(1)).replace(".", ",") + " %</b>";
+  }
+  function short(n) { if (n >= 1e6) return String(n / 1e6).replace(".", ",") + " mil."; if (n >= 1000) return String(n / 1000).replace(".", ",") + " tis."; return String(n); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+
+  /* ---------- Engine: FIFO matching, independent of the period and of the test ---------- */
+  var ALL = [], SALES = [], LOTS = [], POOL = {};
+  TX.slice().sort(function (a, b) { return a[0] < b[0] ? -1 : 1; }).forEach(function (r, i) {
+    var t = { id: i, date: r[0], type: r[1], ticker: r[2], qty: r[3], price: r[4], fee: r[5] || 0, cur: T[r[2]].cur };
+    t.rate = rate(t.cur, t.date); t.volCzk = t.qty * t.price * t.rate; t.feeCzk = t.fee * t.rate;
+    ALL.push(t);
+    var pool = POOL[t.ticker] || (POOL[t.ticker] = { qty: 0, cost: 0, fee: 0 });
+    if (t.type === "buy") {
+      pool.qty += t.qty; pool.cost += t.volCzk; pool.fee += t.feeCzk;
+      LOTS.push({ ticker: t.ticker, date: t.date, qty: t.qty, left: t.qty, price: t.price, rate: t.rate, feeCzk: t.feeCzk, cur: t.cur }); return;
+    }
+    /* Weighted average of everything held before the sale, as services/cost_basis.rs does it. */
+    var avgCost = pool.cost / pool.qty, avgFee = pool.fee / pool.qty;
+    t.avgUnit = avgCost; pool.qty -= t.qty; pool.cost -= t.qty * avgCost; pool.fee -= t.qty * avgFee;
+    var need = t.qty; t.matches = [];
+    LOTS.forEach(function (l) {
+      if (l.ticker !== t.ticker || need <= 0 || l.left <= 0) return;
+      var q = Math.min(l.left, need); l.left -= q; need -= q;
+      var sellFee = t.feeCzk * q / t.qty;
+      t.matches.push({ qty: q, lot: l, proceeds: q * t.price * t.rate,
+        fifo: { cost: q * l.price * l.rate, fees: l.feeCzk * q / l.qty + sellFee },
+        avg: { cost: q * avgCost, fees: q * avgFee + sellFee } });
+    });
+    SALES.push(t);
+  });
+  var DIVS = [];
+  DIVP.forEach(function (d) {
+    var heldQty = 0, cur = T[d[1]].cur, r = rate(cur, d[0]);
+    ALL.forEach(function (t) { if (t.ticker === d[1] && t.date < d[0]) heldQty += t.type === "buy" ? t.qty : -t.qty; });
+    if (heldQty > 0) DIVS.push({ date: d[0], type: "div", ticker: d[1], qty: heldQty, price: d[2], cur: cur, rate: r, volCzk: heldQty * d[2] * r, fee: 0, feeCzk: 0 });
+  });
+  var YEARS = [2021, 2022, 2023, 2024, 2025, 2026];
+
+  /* ---------- State ---------- */
+  var S = { upTab: "soon", method: "fifo", custom: false, customMonths: 18, mode: "year", year: 2026, from: "2025-11-24", to: TODAY, test: true, months: 36, view: "sales", q: "", cls: "all", type: "all", bucket: null, open: {} };
+  var LEN = { 6: "6 měsíců", 12: "1 rok", 24: "2 roky", 36: "3 roky", 60: "5 let", 120: "10 let" };
+  function lenLabel(m) { return LEN[m] || m + " " + plural(m, "měsíc", "měsíce", "měsíců"); }
+  var TIPS = {};
+
+  function period() { return S.mode === "year" ? { from: S.year + "-01-01", to: S.year + "-12-31" } : { from: S.from, to: S.to }; }
+  function periodLabel() {
+    if (S.mode === "year") return String(S.year) + (S.year === +TODAY.slice(0, 4) ? " · do dneška" : "");
+    return day(S.from) + " – " + day(S.to);
+  }
+  function inPeriod(d) { var p = period(); return d >= p.from && d <= p.to; }
+  function exempt(m, sale) { return S.test && isExempt(m.lot.date, sale.date, S.months); }
+  function sum(ms) { var o = { qty: 0, proceeds: 0, cost: 0, fees: 0, result: 0 }; ms.forEach(function (m) { o.qty += m.qty; o.proceeds += m.proceeds; o.cost += m.cost; o.fees += m.fees; o.result += m.result; }); return o; }
+  /* Every matched lot of the period, tagged with its sale and its class. */
+  function matches() {
+    var out = [];
+    SALES.forEach(function (s) { if (inPeriod(s.date)) s.matches.forEach(function (m) { out.push({ m: m, sale: s, exempt: exempt(m, s) }); }); });
+    return out;
+  }
+
+  /* ---------- Hero ---------- */
+  function renderHero() {
+    var ms = matches(), tot = sum(ms.map(function (x) { return x.m; }));
+    var tax = sum(ms.filter(function (x) { return !x.exempt; }).map(function (x) { return x.m; }));
+    var exm = sum(ms.filter(function (x) { return x.exempt; }).map(function (x) { return x.m; }));
+    var sales = SALES.filter(function (s) { return inPeriod(s.date); });
+    var wins = sales.filter(function (s) { return sum(s.matches).result > 0; }).length;
+    var len = lenLabel(S.months);
+
+    document.getElementById("hero-label").textContent = "Výsledek z prodejů · " + periodLabel();
+    document.getElementById("hero-value").textContent = sgn(tot.result);
+    document.getElementById("hero-delta").innerHTML = sales.length
+      ? changeBadge(tot.result / (tot.cost + tot.fees) * 100) + "<span>k výdajům · " + sales.length + " " + plural(sales.length, "prodej", "prodeje", "prodejů") + ", " + wins + " v zisku a " + (sales.length - wins) + " ve ztrátě</span>"
+      : "<span style=\"margin:0\">V tomto období jste nic neprodali.</span>";
+
+    document.getElementById("hero-aside").innerHTML = S.test && sales.length
+      ? '<div class="hero__label">Podléhá dani</div><b class="hero__value ' + sgnCls(tax.result) + '">' + sgn(tax.result) + "</b><small>Osvobozeno časovým testem " + sgn(exm.result) + "</small>"
+      : "";
+
+    function row(cls, title, sub, o) {
+      return '<div class="sgrid sgrid--row ' + cls + '"><div><b>' + title + "</b>" + (sub ? "<small>" + sub + "</small>" : "") + "</div>" +
+        '<div class="cell--num">' + kc(o.proceeds) + '</div><div class="cell--num">' + kc(o.cost) + '</div><div class="cell--num">' + sgn(o.proceeds - o.cost) + "</div>" +
+        '<div class="cell--num">' + kc(o.fees) + '</div><div class="cell--num"><span class="amt ' + sgnCls(o.result) + '">' + sgn(o.result) + "</span></div></div>";
+    }
+    var h = '<div class="sgrid sgrid--head"><div></div><div class="cell--num">Příjmy z prodeje</div><div class="cell--num">Nabývací cena</div><div class="cell--num">Výsledek</div><div class="cell--num">Poplatky</div><div class="cell--num">Výsledek po poplatcích</div></div>';
+    if (S.test) {
+      h += row("is-key", "Podléhá dani", "prodané kusy držené nejvýše " + len, tax) +
+           row("", "Osvobozeno časovým testem", "prodané kusy držené déle než " + len, exm) +
+           row("sgrid--total", "Celkem", "", tot);
+    } else {
+      h += row("sgrid--total", "Všechny prodeje", "bez časového testu", tot);
+    }
+    document.getElementById("split-table").innerHTML = h;
+
+    var alert = "";
+    if (S.test && Math.round(tax.result) < 0) {
+      alert = '<div class="alert split__alert">' + icon("info", 15) + "<div><b>Zdanitelné prodeje skončily ve ztrátě</b>Zisk z osvobozených prodejů se s ní nesčítá, takže z prodejů v tomto období daň nevychází.</div></div>";
+    }
+    document.getElementById("split-alert").innerHTML = alert;
+    document.getElementById("test-len-wrap").classList.toggle("is-hidden", !S.test);
+    document.getElementById("test-custom-wrap").classList.toggle("is-hidden", !(S.test && S.custom));
+  }
+
+  /* ---------- Stats ---------- */
+  function renderStats() {
+    var tx = ALL.filter(function (t) { return inPeriod(t.date); });
+    var buys = tx.filter(function (t) { return t.type === "buy"; }), sells = tx.filter(function (t) { return t.type === "sell"; });
+    function vol(a) { return a.reduce(function (s, t) { return s + t.volCzk; }, 0); }
+    function names(a) { var o = {}; a.forEach(function (t) { o[t.ticker] = 1; }); var n = Object.keys(o).length; return n + " " + plural(n, "titul", "tituly", "titulů"); }
+    var fees = tx.reduce(function (s, t) { return s + t.feeCzk; }, 0), turnover = vol(tx);
+    var divs = DIVS.filter(function (d) { return inPeriod(d.date); }), divSum = divs.reduce(function (s, d) { return s + d.volCzk; }, 0);
+    function stat(label, value, note, tip) {
+      return '<div class="stat"><span class="stat__label"><span>' + label + (tip ? ' <button type="button" class="info" data-tip="' + tip + '" aria-label="Vysvětlení: ' + label + '">' + icon("info", 13) + "</button>" : "") + "</span></span>" +
+        '<b class="stat__value">' + value + '</b><span class="stat__note">' + note + "</span></div>";
+    }
+    document.getElementById("stats").innerHTML =
+      stat("Příjmy z prodeje", kc(vol(sells)), sells.length ? sells.length + " " + plural(sells.length, "prodej", "prodeje", "prodejů") + " · " + names(sells) : "Žádný prodej") +
+      stat("Nakoupeno", kc(vol(buys)), buys.length ? buys.length + " " + plural(buys.length, "nákup", "nákupy", "nákupů") + " · " + names(buys) : "Žádný nákup") +
+      stat("Zaplacené poplatky", kc(fees), tx.length ? "za nákupy i prodeje · " + String((fees / turnover * 100).toFixed(2)).replace(".", ",") + " % objemu" : "Žádná transakce") +
+      stat("Dividendy (hrubé)", kc(divSum), divs.length ? divs.length + " " + plural(divs.length, "výplata", "výplaty", "výplat") + " · mimo výsledek z prodejů" : "Žádná výplata", "dividends");
+    refreshInfoIcons();
+  }
+
+  /* ---------- Bars ---------- */
+  function buckets() {
+    var p = period(), a = pd(p.from), b = pd(p.to), out = [];
+    var months = (b.getUTCFullYear() - a.getUTCFullYear()) * 12 + b.getUTCMonth() - a.getUTCMonth() + 1;
+    if (months <= 24) {
+      for (var i = 0; i < months; i++) {
+        var d = new Date(Date.UTC(a.getUTCFullYear(), a.getUTCMonth() + i, 1)), key = iso(d).slice(0, 7);
+        out.push({ key: key, label: CZ_MONTHS[d.getUTCMonth()] + (months > 12 && d.getUTCMonth() === 0 ? " " + String(d.getUTCFullYear()).slice(2) : ""), name: MONTHS[d.getUTCMonth()] + " " + d.getUTCFullYear() });
+      }
+    } else {
+      for (var y = a.getUTCFullYear(); y <= b.getUTCFullYear(); y++) out.push({ key: String(y), label: String(y), name: "rok " + y });
+    }
+    return out;
+  }
+  function inBucket(d) { return !S.bucket || d.indexOf(S.bucket) === 0; }
+  function nice(max) { if (max <= 0) return 1000; var p = Math.pow(10, Math.floor(Math.log10(max))), f = max / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 4 ? 4 : f <= 5 ? 5 : 10) * p; }
+  function renderBars() {
+    var bs = buckets(), max = 0, tb = 0, ts = 0;
+    bs.forEach(function (b) {
+      b.buy = 0; b.sell = 0; b.result = 0;
+      ALL.forEach(function (t) { if (inPeriod(t.date) && t.date.indexOf(b.key) === 0) { if (t.type === "buy") b.buy += t.volCzk; else { b.sell += t.volCzk; b.result += sum(t.matches).result; } } });
+      max = Math.max(max, b.buy, b.sell); tb += b.buy; ts += b.sell;
+    });
+    if (S.bucket && !bs.some(function (b) { return b.key === S.bucket; })) S.bucket = null;
+    var top = nice(max), h = "";
+    [0, .25, .5, .75, 1].forEach(function (f) { h += '<i class="bars__line" style="bottom:' + f * 100 + '%"><span>' + short(top * f) + "</span></i>"; });
+    bs.forEach(function (b) {
+      TIPS["b-" + b.key] = "<b>" + b.name + "</b><small>Nákupy " + kc(b.buy) + "</small><small>Prodeje " + kc(b.sell) + "</small>" + (b.sell ? "<small>Výsledek z prodejů " + sgn(b.result) + "</small>" : "");
+      h += '<button type="button" class="bars__col' + (S.bucket && S.bucket !== b.key ? " is-dim" : "") + '" data-bucket="' + b.key + '" data-tip="b-' + b.key + '" aria-pressed="' + (S.bucket === b.key) + '" aria-label="' + b.name + '">' +
+        '<i class="bars__bar bars__bar--buy" style="height:' + b.buy / top * 100 + '%"></i><i class="bars__bar bars__bar--sell" style="height:' + b.sell / top * 100 + '%"></i></button>';
+    });
+    document.getElementById("bars").innerHTML = h;
+    var step = bs.length > 12 ? 2 : 1;
+    document.getElementById("bars-axis").innerHTML = bs.map(function (b, i) { return '<span class="' + (S.bucket === b.key ? "is-sel" : "") + '">' + (i % step === 0 || S.bucket === b.key ? b.label : "") + "</span>"; }).join("");
+    document.getElementById("bars-sub").textContent = "Objem v Kč po " + (bs.length && bs[0].key.length === 4 ? "letech" : "měsících") + ". Sloupec zúží tabulku pod reportem.";
+    document.getElementById("lg-buy").textContent = kc(tb);
+    document.getElementById("lg-sell").textContent = kc(ts);
+  }
+
+  /* ---------- Result by ticker ---------- */
+  function renderTickers() {
+    var by = {};
+    matches().forEach(function (x) {
+      var o = by[x.sale.ticker] || (by[x.sale.ticker] = { ticker: x.sale.ticker, result: 0, tax: 0, exm: 0, qty: 0 });
+      o.result += x.m.result; o.qty += x.m.qty; if (x.exempt) o.exm += x.m.result; else o.tax += x.m.result;
+    });
+    var rows = Object.keys(by).map(function (k) { return by[k]; }).sort(function (a, b) { return b.result - a.result; });
+    var pos = 0, neg = 0; rows.forEach(function (r) { pos = Math.max(pos, r.result); neg = Math.max(neg, -r.result); });
+    var zero = pos + neg > 0 ? neg / (pos + neg) * 100 : 0;
+    document.getElementById("tick-sub").textContent = rows.length ? "Prodané tituly seřazené od největšího zisku po největší ztrátu." : "";
+    if (!rows.length) { document.getElementById("tickers").innerHTML = '<div class="empty" style="padding:28px 12px">' + icon("receipt", 22) + "<h3>Žádný prodej</h3><p>V tomto období jste žádný titul neprodali.</p></div>"; return; }
+    var hiddenCount = S.allTickers ? 0 : Math.max(0, rows.length - 6);
+    document.getElementById("tickers").innerHTML = rows.slice(0, hiddenCount ? 6 : rows.length).map(function (r) {
+      var w = Math.abs(r.result) / (pos + neg) * 100, info = T[r.ticker], sub;
+      if (!S.test) sub = qty(r.qty);
+      else if (Math.round(r.exm) === 0 && r.exm === 0) sub = "celé podléhá dani";
+      else if (r.tax === 0) sub = "celé osvobozeno";
+      else sub = "dani podléhá " + sgn(r.tax);
+      return '<div class="trow"><div class="entity"><i class="logo ' + info.logo + '">' + r.ticker.slice(0, 2) + "</i><div><b>" + info.name + "</b><small>" + r.ticker + " · " + qty(r.qty) + "</small></div></div>" +
+        '<div class="dbar"><i class="dbar__zero" style="left:' + zero + '%"></i><i class="dbar__fill' + (r.result < 0 ? " dbar__fill--neg" : "") + '" style="' + (r.result < 0 ? "right:" + (100 - zero) + "%" : "left:" + zero + "%") + ";width:" + w + '%"></i></div>' +
+        '<div class="trow__v"><span class="' + sgnCls(r.result) + '">' + sgn(r.result) + "</span>" + (S.test ? "<small>" + sub + "</small>" : "") + "</div></div>";
+    }).join("") + (rows.length > 6 ? '<div class="trow__more"><button type="button" class="link" id="more-tickers">' + (hiddenCount ? "Zobrazit všech " + rows.length + " titulů" : "Zobrazit jen prvních 6") + "</button></div>" : "");
+  }
+
+  /* ---------- Upcoming holding-period dates (open lots) ---------- */
+  function openLots() {
+    var o = { soon: [], passed: [], value: 0, passedValue: 0 };
+    LOTS.forEach(function (l) {
+      if (l.left <= 0) return;
+      var pool = POOL[l.ticker], v = l.left * T[l.ticker].now * rate(l.cur, TODAY);
+      var gain = v - (S.method === "fifo" ? l.left * l.price * l.rate + l.feeCzk * l.left / l.qty : l.left * (pool.cost + pool.fee) / pool.qty);
+      var from = iso(new Date(addMonths(l.date, S.months).getTime() + 864e5));
+      var x = { l: l, from: from, days: daysBetween(TODAY, from), value: v, gain: gain };
+      o.value += v;
+      if (from <= TODAY) { o.passedValue += v; o.passed.push(x); } else o.soon.push(x);
+    });
+    o.soon.sort(function (a, b) { return a.days - b.days; });
+    o.passed.sort(function (a, b) { return b.days - a.days; });
+    return o;
+  }
+  function inDays(d) { return d === 1 ? "zítra" : d <= 365 ? "za " + d + " " + plural(d, "den", "dny", "dní") : "za " + Math.round(d / 30.44) + " měs"; }
+  function gainCell(x, tag) { return "<" + tag + ' class="ms__v"><span class="' + sgnCls(x.gain) + '">' + sgn(x.gain) + "</span><small>" + (x.gain < 0 ? "nerealizovaná ztráta" : "nerealizovaný zisk") + "</small></" + tag + ">"; }
+  var WIDGET_ROWS = 4;
+  function renderUpcoming() {
+    var card = document.getElementById("upcoming");
+    card.classList.toggle("is-hidden", !S.test);
+    if (!S.test) return;
+    var o = openLots(), len = lenLabel(S.months);
+    document.getElementById("up-sub").textContent = "Nejbližší nákupy, které překročí " + len + " držení. Prodej od uvedeného dne už časovým testem projde.";
+    document.getElementById("agenda").innerHTML = o.soon.length ? o.soon.slice(0, WIDGET_ROWS).map(function (x) {
+      return '<div class="ms"><div class="ms__chip' + (x.days <= 7 ? " is-soon" : "") + '"><b>' + dayShort(x.from) + "</b><small>" + inDays(x.days) + "</small></div>" +
+        '<div class="ms__t"><b>' + T[x.l.ticker].name + " · " + qty(x.l.left) + "</b><small>Nakoupeno " + day(x.l.date) + "</small></div>" + gainCell(x, "div") + "</div>";
+    }).join("") : '<p class="muted" style="margin:6px 0;font-size:12px">Na časový test už nečeká žádný nákup.</p>';
+    document.getElementById("up-all").textContent = o.soon.length > WIDGET_ROWS ? "Zobrazit všech " + o.soon.length : "Zobrazit detail";
+    document.getElementById("up-foot").textContent = (o.soon.length > WIDGET_ROWS ? "Dalších " + (o.soon.length - WIDGET_ROWS) + " " + plural(o.soon.length - WIDGET_ROWS, "nákup čeká", "nákupy čekají", "nákupů čeká") + " později. " : "") +
+      "Z otevřených pozic za " + kc(o.value) + " už testem prošlo " + Math.round(o.passedValue / o.value * 100) + " % (" + kc(o.passedValue) + ").";
+  }
+  function renderUpModal() {
+    var o = openLots(), len = lenLabel(S.months), rows = S.upTab === "passed" ? o.passed : o.soon;
+    document.getElementById("up-modal-sub").textContent = "Každý nákup, který ještě držíte, a den, od kterého jeho prodej projde časovým testem (" + len + ").";
+    document.getElementById("up-seg").innerHTML =
+      '<button class="seg__btn' + (S.upTab === "soon" ? " is-active" : "") + '" data-value="soon">Čeká na test · ' + o.soon.length + "</button>" +
+      '<button class="seg__btn' + (S.upTab === "passed" ? " is-active" : "") + '" data-value="passed">Už prošlo · ' + o.passed.length + "</button>";
+    var h = '<div class="table t-up"><div class="table__head"><span>' + (S.upTab === "passed" ? "Prošlo" : "Projde") + '</span><span>Titul</span><span>Nakoupeno</span><span class="cell--num">Hodnota dnes</span><span class="cell--num">Nerealizováno</span></div>';
+    rows.forEach(function (x) {
+      var info = T[x.l.ticker];
+      h += '<div class="table__row"><div class="ms__chip' + (S.upTab === "soon" && x.days <= 7 ? " is-soon" : "") + '"><b>' + day(x.from) + "</b><small>" + (S.upTab === "passed" ? "před " + (-x.days) + " " + plural(-x.days, "dnem", "dny", "dny") : inDays(x.days)) + "</small></div>" +
+        '<div class="entity"><span class="logo ' + info.logo + '">' + x.l.ticker.slice(0, 2) + "</span><div><b>" + info.name + "</b><small>" + x.l.ticker + " · " + qty(x.l.left) + (x.l.left < x.l.qty ? " z " + x.l.qty : "") + "</small></div></div>" +
+        '<div class="c2">' + day(x.l.date) + "<small>za " + native(x.l.price, x.l.cur) + " za kus</small></div>" +
+        '<span class="cell--num">' + kc(x.value) + "</span>" + gainCell(x, "div") + "</div>";
+    });
+    if (!rows.length) h += '<div class="empty">' + icon("calendar", 24) + "<h3>" + (S.upTab === "passed" ? "Zatím nic neprošlo" : "Nic nečeká") + "</h3><p>" + (S.upTab === "passed" ? "Žádný držený nákup ještě časový test nepřekročil." : "Všechny držené nákupy už časovým testem prošly.") + "</p></div>";
+    document.getElementById("up-list").innerHTML = h + "</div>";
+    document.getElementById("up-modal-foot").textContent = "Z otevřených pozic za " + kc(o.value) + " už testem prošlo " + Math.round(o.passedValue / o.value * 100) + " % (" + kc(o.passedValue) + ").";
+  }
+
+  /* ---------- Tables ---------- */
+  function testBadge(kind) {
+    return kind === "exempt" ? '<span class="badge badge--outline">Osvobozeno</span>' : kind === "mixed" ? '<span class="badge">Zčásti osvobozeno</span>' : '<span class="badge">Podléhá dani</span>';
+  }
+  function matchQ(t) { var q = S.q.trim().toLowerCase(); return !q || t.ticker.toLowerCase().indexOf(q) >= 0 || T[t.ticker].name.toLowerCase().indexOf(q) >= 0; }
+  function entity(t, sub) { var info = T[t.ticker]; return '<div class="entity"><i class="logo ' + info.logo + '">' + t.ticker.slice(0, 2) + "</i><div><b>" + info.name + "</b><small>" + sub + "</small></div></div>"; }
+  function resultCell(o) { return '<div class="cell--num c2"><span class="amt ' + sgnCls(o.result) + '">' + sgn(o.result) + "</span><br>" + changeBadge(o.result / (o.cost + o.fees) * 100) + "</div>"; }
+
+  function renderSales() {
+    var rows = [], total = { qty: 0, proceeds: 0, cost: 0, fees: 0, result: 0 };
+    SALES.filter(function (s) { return inPeriod(s.date) && inBucket(s.date) && matchQ(s); }).sort(function (a, b) { return a.date < b.date ? 1 : -1; }).forEach(function (s) {
+      var ms = s.matches.filter(function (m) { var e = exempt(m, s); return S.cls === "all" || !S.test || (S.cls === "exempt") === e; });
+      if (!ms.length) return;
+      rows.push({ s: s, ms: ms, o: sum(ms) });
+    });
+    var h = '<div class="table t-sales' + (S.test ? "" : " no-test") + '"><div class="table__head"><span></span><span>Prodáno</span><span>Titul</span><span class="cell--num">Příjem</span>' +
+      '<span class="cell--num">Výdaje <button type="button" class="info" data-tip="costs" aria-label="Co jsou výdaje">' + icon("info", 12) + "</button></span>" +
+      '<span class="cell--num">Výsledek</span><span class="cell--num">' + (S.test ? "Časový test" : "Držení") + "</span></div>";
+    rows.forEach(function (r) {
+      var s = r.s, o = r.o, open = !!S.open[s.id];
+      var ex = r.ms.filter(function (m) { return exempt(m, s); }), exQty = ex.reduce(function (n, m) { return n + m.qty; }, 0);
+      var kind = ex.length === r.ms.length ? "exempt" : ex.length ? "mixed" : "taxable";
+      var first = r.ms[0].lot.date, last = r.ms[r.ms.length - 1].lot.date;
+      var span = r.ms.length > 1 ? held(last, s.date) + " až " + held(first, s.date) : held(first, s.date);
+      for (var k in o) total[k] += o[k];
+      h += '<div class="table__row is-clickable' + (open ? " is-open" : "") + '" data-sale="' + s.id + '" role="button" tabindex="0" aria-expanded="' + open + '">' +
+        '<span class="chev-cell">' + icon("chevron-right", 14, "chev") + "</span><span>" + day(s.date) + "</span>" + entity(s, s.ticker + " · " + qty(o.qty) + (o.qty < s.qty ? " z " + s.qty : "")) +
+        '<div class="cell--num c2">' + kc(o.proceeds) + "<small>" + num(o.qty, 0) + " × " + native(s.price, s.cur) + "</small></div>" +
+        '<div class="cell--num c2">' + kc(o.cost + o.fees) + "<small>z toho poplatky " + kc(o.fees) + "</small></div>" + resultCell(o) +
+        (S.test ? '<div class="test-cell">' + testBadge(kind) + "<small>" + (kind === "mixed" ? exQty + " z " + o.qty + " ks osvobozeno" : "držení " + span) + "</small></div>" : '<div class="cell--num">' + span + "</div>") + "</div>";
+      if (open) r.ms.forEach(function (m) {
+        var e = exempt(m, s);
+        h += '<div class="table__row lot"><span></span><span class="c2">' + day(m.lot.date) + "<small>nákup</small></span>" +
+          '<div class="c2 lot__what">' + (S.method === "fifo"
+            ? num(m.qty, 0) + " ks × " + native(m.lot.price, m.lot.cur) + "<small>" + (m.lot.cur === "CZK" ? "bez přepočtu" : "kurz nákupu " + num(m.lot.rate, 3) + " · kurz prodeje " + num(s.rate, 3)) + "</small>"
+            : num(m.qty, 0) + " ks<small>průměrem " + fmtKc(s.avgUnit, 2) + " za kus</small>") + "</div>" +
+          '<div class="cell--num">' + kc(m.proceeds) + '</div><div class="cell--num c2">' + kc(m.cost + m.fees) + "<small>z toho poplatky " + kc(m.fees) + "</small></div>" +
+          '<div class="cell--num"><span class="amt ' + sgnCls(m.result) + '">' + sgn(m.result) + "</span></div>" +
+          (S.test ? '<div class="test-cell">' + testBadge(e ? "exempt" : "taxable") + "<small>držení " + held(m.lot.date, s.date) + "</small></div>" : '<div class="cell--num">' + held(m.lot.date, s.date) + "</div>") + "</div>";
+      });
+    });
+    if (rows.length) {
+      h += '<div class="table__row sumrow"><span></span><span>Celkem</span><span>' + rows.length + " " + plural(rows.length, "prodej", "prodeje", "prodejů") + "</span>" +
+        '<span class="cell--num">' + kc(total.proceeds) + '</span><span class="cell--num">' + kc(total.cost + total.fees) + "</span>" +
+        '<span class="cell--num ' + sgnCls(total.result) + '">' + sgn(total.result) + "</span><span></span></div>";
+    } else {
+      h += emptyTable("Žádný prodej", "Pro zvolené období a filtr tu žádný prodej není.");
+    }
+    document.getElementById("tbl").innerHTML = h + "</div>";
+    document.getElementById("tbl-title").textContent = "Výsledek jednotlivých prodejů";
+    document.getElementById("tbl-sub").textContent = "Co který prodej vynesl. Řádek rozbalí nákupy, ze kterých se skládá, s nabývací cenou a dobou držení.";
+    refreshInfoIcons();
+  }
+
+  var KIND = { buy: ["▲", "Nákup"], sell: ["▽", "Prodej"], div: ["○", "Dividenda"] };
+  function renderAll() {
+    var rows = ALL.concat(DIVS).filter(function (t) { return inPeriod(t.date) && inBucket(t.date) && matchQ(t) && (S.type === "all" || S.type === t.type); }).sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+    var h = '<div class="table t-all"><div class="table__head"><span>Datum</span><span>Typ</span><span>Titul</span><span class="cell--num">Počet</span><span class="cell--num">Cena za kus</span><span class="cell--num">Objem v Kč</span><span class="cell--num">Poplatek</span></div>';
+    rows.forEach(function (t) {
+      var isDiv = t.type === "div", k = KIND[t.type];
+      h += '<div class="table__row"><span>' + day(t.date) + '</span><span class="kind' + (isDiv ? " kind--div" : "") + '"><i>' + k[0] + "</i>" + k[1] + "</span>" + entity(t, t.ticker) +
+        '<span class="cell--num">' + num(t.qty, 0) + "</span>" + (isDiv ? '<div class="cell--num c2">' + native(t.price, t.cur) + "<small>na akcii, hrubá</small></div>" : '<span class="cell--num">' + native(t.price, t.cur) + "</span>") +
+        '<div class="cell--num c2">' + kc(t.volCzk) + "<small>" + (t.cur === "CZK" ? "bez přepočtu" : "kurz " + num(t.rate, 3)) + "</small></div>" +
+        '<span class="cell--num">' + (t.fee ? native(t.fee, t.cur) : "—") + "</span></div>";
+    });
+    if (!rows.length) h += emptyTable("Žádný záznam", "Pro zvolené období a filtr tu nic není.");
+    document.getElementById("tbl").innerHTML = h + "</div>" + (rows.length ? '<div class="table__foot"><span>' + rows.length + " " + plural(rows.length, "záznam", "záznamy", "záznamů") + "</span><span>Nákup ▲ · prodej ▽ · dividenda ○</span></div>" : "");
+    document.getElementById("tbl-title").textContent = "Všechny transakce";
+    document.getElementById("tbl-sub").textContent = "Každý nákup, prodej a dividenda období v původní měně i v Kč. Dividendy se do výsledku z prodejů nepočítají.";
+  }
+  function emptyTable(t, p) { return '<div class="empty">' + icon("receipt", 24) + "<h3>" + t + "</h3><p>" + p + "</p></div>"; }
+
+  function renderTable() {
+    document.getElementById("cls-seg").classList.toggle("is-hidden", !(S.view === "sales" && S.test));
+    document.getElementById("type-seg").classList.toggle("is-hidden", S.view !== "all");
+    document.getElementById("export").classList.toggle("is-hidden", S.view !== "all");
+    var name = S.bucket ? (S.bucket.length === 4 ? "rok " + S.bucket : MONTHS[+S.bucket.slice(5) - 1] + " " + S.bucket.slice(0, 4)) : "";
+    document.getElementById("filter-badge").innerHTML = S.bucket ? '<span class="badge badge--dark badge--filter" title="Tabulka ukazuje jen tento úsek období.">' + icon("list-filter", 11) + "Filtr: " + name + '<button type="button" id="clear-bucket" aria-label="Zrušit filtr">' + icon("x", 11) + "</button></span>" : "";
+    var noSub = document.getElementById("cls-seg").classList.contains("is-hidden") && document.getElementById("type-seg").classList.contains("is-hidden") && !S.bucket;
+    document.querySelector(".subbar").classList.toggle("is-hidden", noSub);
+    if (S.view === "sales") renderSales(); else renderAll();
+  }
+
+  /* ---------- Head ---------- */
+  function renderHead() {
+    document.getElementById("year-label").textContent = S.year;
+    document.getElementById("year-prev").disabled = S.year <= YEARS[0];
+    document.getElementById("year-next").disabled = S.year >= YEARS[YEARS.length - 1];
+    document.getElementById("stepper").classList.toggle("is-hidden", S.mode !== "year");
+    document.getElementById("range").classList.toggle("is-hidden", S.mode !== "custom");
+  }
+  /* The lots (dates, quantities) stay FIFO; only what they cost follows the chosen method. */
+  function applyMethod() {
+    SALES.forEach(function (s) { s.matches.forEach(function (m) { var v = m[S.method]; m.cost = v.cost; m.fees = v.fees; m.result = m.proceeds - v.cost - v.fees; }); });
+    document.getElementById("note-method").textContent = S.method === "fifo"
+      ? "nabývací cena se bere od nejstarších nákupů"
+      : "nabývací cena je vážený průměr nákupů, doba držení se bere od nejstarších";
+  }
+  function render() { applyMethod(); renderHead(); renderHero(); renderStats(); renderBars(); renderTickers(); renderUpcoming(); renderTable(); }
+
+  /* ---------- Tooltips ---------- */
+  TIPS.timeTest = "<b>Časový test</b><p>V některých zemích se zisk z prodeje akcií nedaní, když je držíte déle než stanovenou dobu. <em>V Česku jsou to 3 roky</em>, na Slovensku 1 rok. Jinde, třeba v Německu nebo Polsku, takové pravidlo není.</p><p>Zapněte ho jen tehdy, když platí pro vás, a nastavte dobu podle své země. Když v nabídce chybí, zvolte Vlastní a zadejte ji v měsících. Report pak prodané kusy rozdělí na osvobozené a ty, které dani podléhají.</p><p>Daň samotnou Moony nepočítá. Ztráta z osvobozeného prodeje zdanitelný výsledek nesnižuje.</p>";
+  TIPS.fifo = "<b>Jak určit nabývací cenu</b><p><em>Nejstarší nákupy (FIFO).</em> Když prodáte část pozice, bere se, že šly nejdřív nejstarší kusy. Nabývací cenou je to, co jste zaplatili právě za ně.</p><p><em>Vážený průměr.</em> Každý prodaný kus má průměrnou cenu všech kusů, které jste před prodejem drželi. Takhle počítá realizovaný zisk zbytek Moony.</p><p>V Česku se pro daňové přiznání připouští obojí. Zvolte postup, podle kterého přiznání podáváte. Doba držení pro časový test se v obou případech bere od nejstarších nákupů.</p>";
+  TIPS.fx = "<b>Přepočet na Kč</b><p>Nákup i prodej se přepočítají kurzem ECB ze svého dne, takže ve výsledku je i pohyb kurzu.</p><p>Daňové přiznání může chtít jiný kurz, v Česku denní kurz ČNB nebo jednotný roční kurz. Rozdíl bývá malý.</p>";
+  TIPS.costs = "<b>Výdaje</b><p>Nabývací cena prodaných kusů a poplatky za jejich nákup i prodej.</p>";
+  TIPS.dividends = "<b>Dividendy</b><p>Hrubé dividendy před srážkovou daní, přepočtené na Kč. Daní se jinak než prodeje, proto ve výsledku z prodejů nejsou.</p>";
+  var EXPLAIN = { timeTest: 1, fifo: 1, fx: 1, costs: 1, dividends: 1 };
+
+  var tip = document.getElementById("tip"), pinned = null;
+  function showTip(el) {
+    var key = el.dataset.tip; if (!TIPS[key]) return;
+    tip.className = "tip" + (EXPLAIN[key] ? " tip--explain" : "");
+    tip.innerHTML = TIPS[key];
+    var r = el.getBoundingClientRect(), w = tip.offsetWidth, hh = tip.offsetHeight;
+    var x = Math.max(12, Math.min(window.innerWidth - w - 12, r.left + r.width / 2 - w / 2));
+    var below = r.bottom + 8, y = below + hh > window.innerHeight - 8 && r.top - hh - 8 > 50 ? r.top - hh - 8 : below;
+    if (!EXPLAIN[key]) y = Math.max(50, r.top - hh - 8);
+    tip.style.left = x + "px"; tip.style.top = y + "px";
+    tip.classList.add("is-on");
+  }
+  function hideTip() { tip.classList.remove("is-on"); }
+  function unpin() { if (pinned) { pinned.setAttribute("aria-expanded", "false"); pinned = null; } hideTip(); }
+  document.addEventListener("mouseover", function (e) { if (pinned) return; var t = e.target.closest("[data-tip]"); if (t) showTip(t); });
+  document.addEventListener("mouseout", function (e) { if (pinned) return; var t = e.target.closest("[data-tip]"); if (t && !t.contains(e.relatedTarget)) hideTip(); });
+  document.addEventListener("focusin", function (e) { if (pinned) return; var t = e.target.closest("[data-tip]"); if (t) showTip(t); });
+  document.addEventListener("focusout", function (e) { if (pinned) return; if (e.target.closest("[data-tip]")) hideTip(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") unpin(); });
+  window.addEventListener("scroll", function () { if (!pinned) hideTip(); }, true);
+  function refreshInfoIcons() { document.querySelectorAll(".info:empty").forEach(function (b) { b.innerHTML = icon("info", 14); }); }
+
+  /* ---------- Events ---------- */
+  document.addEventListener("click", function (e) {
+    var info = e.target.closest(".info");
+    if (info) { e.stopPropagation(); e.preventDefault(); if (pinned === info) { unpin(); return; } unpin(); pinned = info; info.setAttribute("aria-expanded", "true"); showTip(info); return; }
+    if (pinned) unpin();
+    var col = e.target.closest(".bars__col");
+    if (col) { S.bucket = S.bucket === col.dataset.bucket ? null : col.dataset.bucket; renderBars(); renderTable(); return; }
+    if (e.target.closest("#more-tickers")) { S.allTickers = !S.allTickers; renderTickers(); return; }
+    if (e.target.closest("#clear-bucket")) { S.bucket = null; renderBars(); renderTable(); return; }
+    var row = e.target.closest("[data-sale]");
+    if (row) { S.open[row.dataset.sale] = !S.open[row.dataset.sale]; renderSales(); return; }
+  });
+  document.addEventListener("keydown", function (e) {
+    var row = e.target.closest && e.target.closest("[data-sale]");
+    if (row && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); S.open[row.dataset.sale] = !S.open[row.dataset.sale]; renderSales(); var again = document.querySelector('[data-sale="' + row.dataset.sale + '"]'); if (again) again.focus(); }
+  });
+  document.getElementById("year-prev").addEventListener("click", function () { S.year--; S.bucket = null; render(); });
+  document.getElementById("year-next").addEventListener("click", function () { S.year++; S.bucket = null; render(); });
+  document.getElementById("mode-seg").addEventListener("segchange", function (e) { S.mode = e.detail; S.bucket = null; render(); });
+  document.getElementById("up-all").addEventListener("click", function () { S.upTab = "soon"; renderUpModal(); openModal("up-modal"); });
+  document.getElementById("up-seg").addEventListener("segchange", function (e) { S.upTab = e.detail; renderUpModal(); });
+  document.getElementById("up-close").innerHTML = icon("x", 14);
+  document.getElementById("up-close").addEventListener("click", function () { closeModal("up-modal"); });
+  document.getElementById("up-close-2").addEventListener("click", function () { closeModal("up-modal"); });
+  document.getElementById("method-seg").addEventListener("segchange", function (e) { S.method = e.detail; render(); });
+  document.getElementById("view-seg").addEventListener("segchange", function (e) { S.view = e.detail; renderTable(); });
+  document.getElementById("cls-seg").addEventListener("segchange", function (e) { S.cls = e.detail; renderTable(); });
+  document.getElementById("type-seg").addEventListener("segchange", function (e) { S.type = e.detail; renderTable(); });
+  document.getElementById("theme-seg").addEventListener("segchange", function (e) { document.documentElement.setAttribute("data-theme", e.detail); });
+  document.getElementById("test-on").addEventListener("change", function (e) { S.test = e.target.checked; render(); });
+  document.getElementById("test-len").addEventListener("change", function (e) {
+    S.custom = e.target.value === "custom"; S.months = S.custom ? S.customMonths : +e.target.value; render();
+    if (S.custom) document.getElementById("test-custom").select();
+  });
+  document.getElementById("test-custom").addEventListener("input", function (e) {
+    var n = +e.target.value, ok = /^\d+$/.test(e.target.value) && n >= 1 && n <= 600;
+    e.target.classList.toggle("is-invalid", !ok);
+    if (ok) { S.customMonths = S.months = n; render(); }
+  });
+  document.getElementById("q").addEventListener("input", function (e) { S.q = e.target.value; renderTable(); });
+  var from = document.getElementById("from"), to = document.getElementById("to");
+  from.value = S.from; to.value = S.to; from.min = to.min = "2021-01-01"; from.max = to.max = TODAY;
+  function onRange() { if (from.value && to.value && from.value <= to.value) { S.from = from.value; S.to = to.value; S.bucket = null; render(); } }
+  from.addEventListener("change", onRange); to.addEventListener("change", onRange);
+  document.getElementById("export").innerHTML = icon("download", 13) + "Exportovat CSV";
+  document.getElementById("export").addEventListener("click", function () { toast("CSV exportováno"); });
+
+  document.getElementById("year-prev").innerHTML = icon("chevron-left", 15);
+  document.getElementById("year-next").innerHTML = icon("chevron-right", 15);
+  document.getElementById("search-wrap").insertAdjacentHTML("afterbegin", icon("search", 14));
+  refreshInfoIcons();
+  render();
+})();
+</script>
+</body>
+</html>

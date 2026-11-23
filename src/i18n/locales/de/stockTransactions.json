@@ -1,0 +1,115 @@
+{
+  "title": "Aktientransaktionen",
+  "subtitle": "Käufe, Verkäufe und das Ergebnis der Verkäufe im gewählten Zeitraum. Eine Grundlage für Ihre Steuern, keine Steuererklärung.",
+  "period": {
+    "label": "Zeitraum",
+    "year": "Jahr",
+    "custom": "Eigener Zeitraum",
+    "prevYear": "Vorheriges Jahr",
+    "nextYear": "Nächstes Jahr",
+    "from": "Von",
+    "to": "Bis",
+    "rangeOrder": "Von darf nicht nach Bis liegen.",
+    "yearToDate": "{{year}} · bis heute",
+    "range": "{{from}} – {{to}}"
+  },
+  "empty": {
+    "title": "Noch keine Aktiengeschäfte",
+    "description": "Sobald Sie einen Kauf oder Verkauf einer Aktie erfassen, zeigt dieser Bericht das Ergebnis Ihrer Verkäufe im gewählten Zeitraum.",
+    "action": "Aktien öffnen"
+  },
+  "hero": {
+    "label": "Ergebnis der Verkäufe · {{period}}",
+    "ofCosts": "der Kosten",
+    "sales_one": "{{count}} Verkauf, {{profit}} im Gewinn und {{loss}} im Verlust",
+    "sales_other": "{{count}} Verkäufe, {{profit}} im Gewinn und {{loss}} im Verlust",
+    "noSales": "In diesem Zeitraum haben Sie nichts verkauft.",
+    "exempt": "Durch die Haltefrist befreit {{amount}}"
+  },
+  "settings": {
+    "costMethod": "Anschaffungskosten",
+    "fifo": "Älteste Käufe",
+    "average": "Gewichteter Durchschnitt",
+    "holdingTest": "Haltefrist",
+    "length": "Haltedauer für die Haltefrist",
+    "custom": "Eigene…",
+    "customMonths": "Haltedauer in Monaten",
+    "monthsUnit": "Mon.",
+    "invalidMonths": "Geben Sie eine ganze Zahl von Monaten zwischen 1 und 600 ein."
+  },
+  "length": {
+    "months_one": "{{count}} Monat",
+    "months_other": "{{count}} Monate",
+    "years_one": "{{count}} Jahr",
+    "years_other": "{{count}} Jahre"
+  },
+  "summary": {
+    "title": "Erlöse, Anschaffungskosten und Ergebnis",
+    "proceeds": "Verkaufserlöse",
+    "cost": "Anschaffungskosten",
+    "result": "Ergebnis",
+    "fees": "Gebühren",
+    "resultAfterFees": "Ergebnis nach Gebühren",
+    "taxable": "Steuerpflichtig",
+    "taxableNote": "verkaufte Stücke, höchstens {{length}} gehalten",
+    "exempt": "Durch die Haltefrist befreit",
+    "exemptNote": "verkaufte Stücke, länger als {{length}} gehalten",
+    "total": "Gesamt",
+    "all": "Alle Verkäufe",
+    "allNote": "ohne Haltefrist",
+    "lossTitle": "Die steuerpflichtigen Verkäufe endeten mit Verlust",
+    "lossBody": "Der Gewinn aus befreiten Verkäufen wird nicht damit verrechnet.",
+    "note": "Jedes Geschäft wird zum Kurs seines Tages in {{currency}} umgerechnet",
+    "noteFifo": "Anschaffungskosten aus den ältesten Käufen",
+    "noteAverage": "Anschaffungskosten als gewichteter Durchschnitt der Käufe, Haltedauer ab den ältesten",
+    "noteDividends": "Dividenden zählen nicht zum Ergebnis."
+  },
+  "stats": {
+    "proceeds": "Verkaufserlöse",
+    "sales_one": "{{count}} Verkauf",
+    "sales_other": "{{count}} Verkäufe",
+    "tickers_one": "{{count}} Titel",
+    "tickers_other": "{{count}} Titel",
+    "noSales": "Kein Verkauf",
+    "bought": "Gekauft",
+    "buys_one": "{{count}} Kauf",
+    "buys_other": "{{count}} Käufe",
+    "noBuys": "Kein Kauf",
+    "fees": "Bezahlte Gebühren",
+    "feesNote": "für Käufe und Verkäufe · {{percent}} des Volumens",
+    "feesNoteBare": "für Käufe und Verkäufe",
+    "noTrades": "Keine Transaktion",
+    "dividends": "Dividenden (brutto)",
+    "payouts_one": "{{count}} Auszahlung",
+    "payouts_other": "{{count}} Auszahlungen",
+    "outsideResult": "außerhalb des Verkaufsergebnisses",
+    "noPayouts": "Keine Auszahlung"
+  },
+  "tips": {
+    "costMethod": {
+      "label": "Wie die Anschaffungskosten bestimmt werden",
+      "title": "Anschaffungskosten bestimmen",
+      "fifo": "<em>Älteste Käufe (FIFO).</em> Verkaufen Sie einen Teil einer Position, gelten die ältesten Stücke als zuerst verkauft. Anschaffungskosten sind das, was Sie genau für diese bezahlt haben.",
+      "average": "<em>Gewichteter Durchschnitt.</em> Jedes verkaufte Stück kostet den Durchschnittspreis aller Stücke, die Sie vor dem Verkauf gehalten haben. So berechnet der Rest von Moony den realisierten Gewinn, nur ohne Gebühren, daher kann er von diesem Bericht abweichen.",
+      "choose": "Steuerregeln unterscheiden sich darin, welches Verfahren sie zulassen. Wählen Sie das, nach dem Sie Ihre Steuererklärung abgeben. Die Haltedauer für die Haltefrist zählt in beiden Fällen ab den ältesten Käufen."
+    },
+    "holdingTest": {
+      "label": "Was die Haltefrist ist",
+      "title": "Haltefrist",
+      "what": "In manchen Ländern ist der Gewinn aus einem Aktienverkauf steuerfrei, wenn Sie die Aktien länger als eine bestimmte Zeit gehalten haben. Die Dauer ist von Land zu Land verschieden, und manche kennen keine solche Regel.",
+      "when": "Schalten Sie sie nur ein, wenn sie für Sie gilt, und stellen Sie die Frist nach Ihren eigenen Regeln ein: Wählen Sie eine Vorgabe oder Eigene… und geben Sie sie in Monaten ein. Der Bericht teilt die verkauften Stücke dann in befreite und steuerpflichtige auf.",
+      "tax": "Die Steuer selbst berechnet Moony nicht. Ein Verlust aus einem befreiten Verkauf mindert das steuerpflichtige Ergebnis nicht."
+    },
+    "fx": {
+      "label": "Wie die Währung umgerechnet wird",
+      "title": "Umrechnung in {{currency}}",
+      "rate": "Kauf und Verkauf werden jeweils zum EZB-Kurs ihres Tages umgerechnet, das Ergebnis enthält also auch die Kursbewegung.",
+      "return": "Eine Steuererklärung kann einen anderen Kurs verlangen, etwa den Tages- oder Jahreskurs Ihrer Zentralbank. Der Unterschied ist meist gering."
+    },
+    "dividends": {
+      "label": "Erklärung: Dividenden (brutto)",
+      "title": "Dividenden",
+      "body": "Bruttodividenden vor Quellensteuer, umgerechnet in {{currency}}. Sie werden anders besteuert als Verkäufe und sind deshalb nicht im Verkaufsergebnis enthalten."
+    }
+  }
+}

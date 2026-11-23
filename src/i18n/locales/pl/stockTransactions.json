@@ -1,0 +1,129 @@
+{
+  "title": "Transakcje akcjami",
+  "subtitle": "Zakupy, sprzedaże i wynik ze sprzedaży w wybranym okresie. Podstawa do rozliczenia podatku, nie zeznanie podatkowe.",
+  "period": {
+    "label": "Okres",
+    "year": "Rok",
+    "custom": "Własny okres",
+    "prevYear": "Poprzedni rok",
+    "nextYear": "Następny rok",
+    "from": "Od",
+    "to": "Do",
+    "rangeOrder": "Data Od nie może być późniejsza niż Do.",
+    "yearToDate": "{{year}} · do dziś",
+    "range": "{{from}} – {{to}}"
+  },
+  "empty": {
+    "title": "Brak transakcji akcjami",
+    "description": "Gdy zapiszesz zakup lub sprzedaż akcji, raport pokaże tu wynik ze sprzedaży w wybranym okresie.",
+    "action": "Otwórz akcje"
+  },
+  "hero": {
+    "label": "Wynik ze sprzedaży · {{period}}",
+    "ofCosts": "w stosunku do kosztów",
+    "sales_one": "{{count}} sprzedaż, {{profit}} z zyskiem i {{loss}} ze stratą",
+    "sales_few": "{{count}} sprzedaże, {{profit}} z zyskiem i {{loss}} ze stratą",
+    "sales_many": "{{count}} sprzedaży, {{profit}} z zyskiem i {{loss}} ze stratą",
+    "sales_other": "{{count}} sprzedaży, {{profit}} z zyskiem i {{loss}} ze stratą",
+    "noSales": "W tym okresie nie było sprzedaży.",
+    "exempt": "Zwolnione testem okresu posiadania {{amount}}"
+  },
+  "settings": {
+    "costMethod": "Koszt nabycia",
+    "fifo": "Najstarsze zakupy",
+    "average": "Średnia ważona",
+    "holdingTest": "Test okresu posiadania",
+    "length": "Okres posiadania dla testu",
+    "custom": "Własny…",
+    "customMonths": "Okres posiadania w miesiącach",
+    "monthsUnit": "mies.",
+    "invalidMonths": "Wpisz liczbę całkowitą miesięcy od 1 do 600."
+  },
+  "length": {
+    "months_one": "{{count}} miesiąc",
+    "months_few": "{{count}} miesiące",
+    "months_many": "{{count}} miesięcy",
+    "months_other": "{{count}} miesiąca",
+    "years_one": "{{count}} rok",
+    "years_few": "{{count}} lata",
+    "years_many": "{{count}} lat",
+    "years_other": "{{count}} roku"
+  },
+  "summary": {
+    "title": "Przychody, koszt nabycia i wynik",
+    "proceeds": "Przychód ze sprzedaży",
+    "cost": "Koszt nabycia",
+    "result": "Wynik",
+    "fees": "Opłaty",
+    "resultAfterFees": "Wynik po opłatach",
+    "taxable": "Podlega opodatkowaniu",
+    "taxableNote": "sprzedane akcje trzymane najwyżej {{length}}",
+    "exempt": "Zwolnione testem okresu posiadania",
+    "exemptNote": "sprzedane akcje trzymane dłużej niż {{length}}",
+    "total": "Razem",
+    "all": "Wszystkie sprzedaże",
+    "allNote": "bez testu okresu posiadania",
+    "lossTitle": "Opodatkowana sprzedaż zakończyła się stratą",
+    "lossBody": "Zysk ze zwolnionej sprzedaży nie jest z nią sumowany.",
+    "note": "Każda transakcja jest przeliczana na {{currency}} po kursie z jej dnia",
+    "noteFifo": "koszt nabycia z najstarszych zakupów",
+    "noteAverage": "koszt nabycia jako średnia ważona zakupów, okres posiadania od najstarszych",
+    "noteDividends": "dywidendy nie wchodzą do wyniku."
+  },
+  "stats": {
+    "proceeds": "Przychód ze sprzedaży",
+    "sales_one": "{{count}} sprzedaż",
+    "sales_few": "{{count}} sprzedaże",
+    "sales_many": "{{count}} sprzedaży",
+    "sales_other": "{{count}} sprzedaży",
+    "tickers_one": "{{count}} walor",
+    "tickers_few": "{{count}} walory",
+    "tickers_many": "{{count}} walorów",
+    "tickers_other": "{{count}} waloru",
+    "noSales": "Brak sprzedaży",
+    "bought": "Kupiono",
+    "buys_one": "{{count}} zakup",
+    "buys_few": "{{count}} zakupy",
+    "buys_many": "{{count}} zakupów",
+    "buys_other": "{{count}} zakupu",
+    "noBuys": "Brak zakupów",
+    "fees": "Zapłacone opłaty",
+    "feesNote": "za zakupy i sprzedaże · {{percent}} obrotu",
+    "feesNoteBare": "za zakupy i sprzedaże",
+    "noTrades": "Brak transakcji",
+    "dividends": "Dywidendy (brutto)",
+    "payouts_one": "{{count}} wypłata",
+    "payouts_few": "{{count}} wypłaty",
+    "payouts_many": "{{count}} wypłat",
+    "payouts_other": "{{count}} wypłaty",
+    "outsideResult": "poza wynikiem ze sprzedaży",
+    "noPayouts": "Brak wypłat"
+  },
+  "tips": {
+    "costMethod": {
+      "label": "Jak ustalany jest koszt nabycia",
+      "title": "Jak ustalić koszt nabycia",
+      "fifo": "<em>Najstarsze zakupy (FIFO).</em> Gdy sprzedajesz część pozycji, przyjmuje się, że najpierw zostały sprzedane najstarsze akcje. Kosztem nabycia jest kwota zapłacona właśnie za nie.",
+      "average": "<em>Średnia ważona.</em> Każda sprzedana akcja ma średnią cenę wszystkich akcji posiadanych przed sprzedażą. Tak reszta Moony liczy zrealizowany zysk, tylko bez opłat, więc może się różnić od tego raportu.",
+      "choose": "Przepisy podatkowe różnią się tym, którą metodę dopuszczają. Wybierz tę, według której składasz zeznanie. Okres posiadania dla testu liczy się w obu przypadkach od najstarszych zakupów."
+    },
+    "holdingTest": {
+      "label": "Czym jest test okresu posiadania",
+      "title": "Test okresu posiadania",
+      "what": "W niektórych krajach zysk ze sprzedaży akcji nie jest opodatkowany, jeśli trzymasz je dłużej niż określony czas. Długość tego okresu zależy od kraju, a niektóre kraje nie mają takiej reguły.",
+      "when": "Włącz go tylko wtedy, gdy dotyczy ciebie, i ustaw okres według swoich przepisów: wybierz go z listy albo wybierz Własny… i wpisz go w miesiącach. Raport podzieli wtedy sprzedane akcje na zwolnione i podlegające opodatkowaniu.",
+      "tax": "Moony nie oblicza samego podatku. Strata ze zwolnionej sprzedaży nie obniża wyniku podlegającego opodatkowaniu."
+    },
+    "fx": {
+      "label": "Jak przeliczana jest waluta",
+      "title": "Przeliczenie na {{currency}}",
+      "rate": "Zakup i sprzedaż są przeliczane po kursie EBC z ich własnego dnia, więc wynik obejmuje też zmianę kursu.",
+      "return": "Zeznanie podatkowe może wymagać innego kursu, na przykład dziennego lub rocznego kursu twojego banku centralnego. Różnica zwykle jest niewielka."
+    },
+    "dividends": {
+      "label": "Wyjaśnienie: dywidendy (brutto)",
+      "title": "Dywidendy",
+      "body": "Dywidendy brutto przed podatkiem u źródła, przeliczone na {{currency}}. Są opodatkowane inaczej niż sprzedaż, dlatego nie ma ich w wyniku ze sprzedaży."
+    }
+  }
+}

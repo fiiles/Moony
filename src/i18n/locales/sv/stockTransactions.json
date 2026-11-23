@@ -1,0 +1,115 @@
+{
+  "title": "Aktietransaktioner",
+  "subtitle": "Köp, försäljningar och resultatet av försäljningar för vald period. Ett underlag för skatten, inte en deklaration.",
+  "period": {
+    "label": "Period",
+    "year": "År",
+    "custom": "Egen period",
+    "prevYear": "Föregående år",
+    "nextYear": "Nästa år",
+    "from": "Från",
+    "to": "Till",
+    "rangeOrder": "Från får inte vara efter Till.",
+    "yearToDate": "{{year}} · hittills",
+    "range": "{{from}} – {{to}}"
+  },
+  "empty": {
+    "title": "Inga aktieaffärer än",
+    "description": "När du registrerar ett köp eller en försäljning av en aktie visar rapporten resultatet av dina försäljningar för vald period.",
+    "action": "Öppna aktier"
+  },
+  "hero": {
+    "label": "Resultat av försäljningar · {{period}}",
+    "ofCosts": "av kostnaderna",
+    "sales_one": "{{count}} försäljning, {{profit}} med vinst och {{loss}} med förlust",
+    "sales_other": "{{count}} försäljningar, {{profit}} med vinst och {{loss}} med förlust",
+    "noSales": "Du sålde inget under den här perioden.",
+    "exempt": "Undantaget genom innehavstiden {{amount}}"
+  },
+  "settings": {
+    "costMethod": "Anskaffningsvärde",
+    "fifo": "Äldsta köp",
+    "average": "Vägt genomsnitt",
+    "holdingTest": "Innehavstidstest",
+    "length": "Innehavstid för testet",
+    "custom": "Egen…",
+    "customMonths": "Innehavstid i månader",
+    "monthsUnit": "mån.",
+    "invalidMonths": "Ange ett heltal månader från 1 till 600."
+  },
+  "length": {
+    "months_one": "{{count}} månad",
+    "months_other": "{{count}} månader",
+    "years_one": "{{count}} år",
+    "years_other": "{{count}} år"
+  },
+  "summary": {
+    "title": "Intäkter, anskaffningsvärde och resultat",
+    "proceeds": "Försäljningsintäkter",
+    "cost": "Anskaffningsvärde",
+    "result": "Resultat",
+    "fees": "Avgifter",
+    "resultAfterFees": "Resultat efter avgifter",
+    "taxable": "Skattepliktigt",
+    "taxableNote": "sålda aktier som innehafts högst {{length}}",
+    "exempt": "Undantaget genom innehavstiden",
+    "exemptNote": "sålda aktier som innehafts längre än {{length}}",
+    "total": "Totalt",
+    "all": "Alla försäljningar",
+    "allNote": "utan innehavstidstest",
+    "lossTitle": "De skattepliktiga försäljningarna slutade med förlust",
+    "lossBody": "Vinsten från undantagna försäljningar läggs inte ihop med den.",
+    "note": "Varje affär räknas om till {{currency}} till kursen för sin dag",
+    "noteFifo": "anskaffningsvärde från de äldsta köpen",
+    "noteAverage": "anskaffningsvärde som vägt genomsnitt av köpen, innehavstid från de äldsta",
+    "noteDividends": "utdelningar räknas inte in i resultatet."
+  },
+  "stats": {
+    "proceeds": "Försäljningsintäkter",
+    "sales_one": "{{count}} försäljning",
+    "sales_other": "{{count}} försäljningar",
+    "tickers_one": "{{count}} värdepapper",
+    "tickers_other": "{{count}} värdepapper",
+    "noSales": "Ingen försäljning",
+    "bought": "Köpt",
+    "buys_one": "{{count}} köp",
+    "buys_other": "{{count}} köp",
+    "noBuys": "Inga köp",
+    "fees": "Betalda avgifter",
+    "feesNote": "för köp och försäljningar · {{percent}} av volymen",
+    "feesNoteBare": "för köp och försäljningar",
+    "noTrades": "Inga affärer",
+    "dividends": "Utdelningar (brutto)",
+    "payouts_one": "{{count}} utbetalning",
+    "payouts_other": "{{count}} utbetalningar",
+    "outsideResult": "utanför resultatet av försäljningar",
+    "noPayouts": "Ingen utbetalning"
+  },
+  "tips": {
+    "costMethod": {
+      "label": "Hur anskaffningsvärdet bestäms",
+      "title": "Så bestäms anskaffningsvärdet",
+      "fifo": "<em>Äldsta köp (FIFO).</em> När du säljer en del av ett innehav räknas de äldsta aktierna som sålda först. Anskaffningsvärdet är det du betalade för just dem.",
+      "average": "<em>Vägt genomsnitt.</em> Varje såld aktie kostar genomsnittspriset för alla aktier du ägde före försäljningen. Så räknar resten av Moony realiserad vinst, fast utan avgifter, så den kan skilja sig från den här rapporten.",
+      "choose": "Skatteregler skiljer sig åt i vilken metod de godtar. Välj den du deklarerar efter. Innehavstiden för testet räknas i båda fallen från de äldsta köpen."
+    },
+    "holdingTest": {
+      "label": "Vad innehavstidstestet är",
+      "title": "Innehavstidstest",
+      "what": "I vissa länder beskattas inte vinst från försäljning av aktier om du har ägt dem längre än en bestämd tid. Längden skiljer sig mellan länder, och vissa har ingen sådan regel.",
+      "when": "Slå bara på det om det gäller dig och ställ in tiden efter dina egna regler: välj en förinställd längd, eller Egen… och ange den i månader. Rapporten delar då upp de sålda aktierna i undantagna och skattepliktiga.",
+      "tax": "Moony räknar inte ut själva skatten. En förlust från en undantagen försäljning minskar inte det skattepliktiga resultatet."
+    },
+    "fx": {
+      "label": "Hur valutan räknas om",
+      "title": "Omräkning till {{currency}}",
+      "rate": "Köp och försäljning räknas var för sig om till ECB-kursen för sin dag, så resultatet innehåller även valutarörelsen.",
+      "return": "Deklarationen kan kräva en annan kurs, till exempel din centralbanks dags- eller årskurs. Skillnaden brukar vara liten."
+    },
+    "dividends": {
+      "label": "Förklaring: utdelningar (brutto)",
+      "title": "Utdelningar",
+      "body": "Bruttoutdelningar före källskatt, omräknade till {{currency}}. De beskattas annorlunda än försäljningar och ingår därför inte i resultatet av försäljningar."
+    }
+  }
+}

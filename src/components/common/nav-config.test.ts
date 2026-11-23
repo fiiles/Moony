@@ -48,6 +48,7 @@ describe('nav tree (design system §5)', () => {
       '/reports/cashflow-planning',
       '/reports/projection',
       '/reports/stocks-analysis',
+      '/reports/stock-transactions',
       '/stock-monitor',
       '/calculators/annuity',
       '/calculators/estate',
@@ -167,6 +168,7 @@ describe('visibleItems', () => {
     const tools = NAV_GROUPS.find((g) => g.id === 'tools')!;
     const ids = visibleItems(tools, { investments: false }).map((i) => i.id);
     expect(ids).not.toContain('stocksAnalysis');
+    expect(ids).not.toContain('stockTransactions');
     expect(ids).not.toContain('stockMonitor');
     expect(ids).toContain('cashflowPlanning');
   });

@@ -29,6 +29,7 @@ import Projection from '@/pages/Projection';
 import AnnuityCalculator from '@/pages/AnnuityCalculator';
 import EstateCalculator from '@/pages/EstateCalculator';
 import StocksAnalysis from '@/pages/StocksAnalysis';
+import StockTransactions from '@/pages/StockTransactions';
 import BankAccounts from '@/pages/BankAccounts';
 import BankAccountDetail from '@/pages/BankAccountDetail';
 import CategorizationRules from '@/pages/CategorizationRules';
@@ -75,6 +76,7 @@ function Router() {
       </Route>
       <ProtectedRoute path="/reports/projection" component={Projection} />
       <ProtectedRoute path="/reports/stocks-analysis" component={StocksAnalysis} />
+      <ProtectedRoute path="/reports/stock-transactions" component={StockTransactions} />
       <ProtectedRoute path="/calculators/annuity" component={AnnuityCalculator} />
       <ProtectedRoute path="/calculators/estate" component={EstateCalculator} />
       <ProtectedRoute path="/bank-accounts" component={BankAccounts} />

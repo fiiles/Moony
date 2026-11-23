@@ -1,0 +1,122 @@
+{
+  "title": "Operaciones con acciones",
+  "subtitle": "Compras, ventas y el resultado de las ventas del período elegido. Una base para tus impuestos, no una declaración.",
+  "period": {
+    "label": "Período",
+    "year": "Año",
+    "custom": "Período personalizado",
+    "prevYear": "Año anterior",
+    "nextYear": "Año siguiente",
+    "from": "Desde",
+    "to": "Hasta",
+    "rangeOrder": "Desde no puede ser posterior a Hasta.",
+    "yearToDate": "{{year}} · hasta hoy",
+    "range": "{{from}} – {{to}}"
+  },
+  "empty": {
+    "title": "Aún no hay operaciones con acciones",
+    "description": "Cuando registres una compra o una venta de una acción, este informe mostrará el resultado de tus ventas en el período elegido.",
+    "action": "Abrir acciones"
+  },
+  "hero": {
+    "label": "Resultado de las ventas · {{period}}",
+    "ofCosts": "sobre los costes",
+    "sales_one": "{{count}} venta, {{profit}} con ganancia y {{loss}} con pérdida",
+    "sales_many": "{{count}} ventas, {{profit}} con ganancia y {{loss}} con pérdida",
+    "sales_other": "{{count}} ventas, {{profit}} con ganancia y {{loss}} con pérdida",
+    "noSales": "No vendiste nada en este período.",
+    "exempt": "Exento por el plazo de tenencia {{amount}}"
+  },
+  "settings": {
+    "costMethod": "Coste de adquisición",
+    "fifo": "Compras más antiguas",
+    "average": "Media ponderada",
+    "holdingTest": "Plazo de tenencia",
+    "length": "Plazo de tenencia para la exención",
+    "custom": "Personalizado…",
+    "customMonths": "Plazo de tenencia en meses",
+    "monthsUnit": "meses",
+    "invalidMonths": "Introduce un número entero de meses entre 1 y 600."
+  },
+  "length": {
+    "months_one": "{{count}} mes",
+    "months_many": "{{count}} meses",
+    "months_other": "{{count}} meses",
+    "years_one": "{{count}} año",
+    "years_many": "{{count}} años",
+    "years_other": "{{count}} años"
+  },
+  "summary": {
+    "title": "Ingresos, coste de adquisición y resultado",
+    "proceeds": "Ingresos por ventas",
+    "cost": "Coste de adquisición",
+    "result": "Resultado",
+    "fees": "Comisiones",
+    "resultAfterFees": "Resultado tras comisiones",
+    "taxable": "Sujeto a impuestos",
+    "taxableNote": "acciones vendidas mantenidas como máximo {{length}}",
+    "exempt": "Exento por el plazo de tenencia",
+    "exemptNote": "acciones vendidas mantenidas más de {{length}}",
+    "total": "Total",
+    "all": "Todas las ventas",
+    "allNote": "sin plazo de tenencia",
+    "lossTitle": "Las ventas sujetas a impuestos terminaron en pérdida",
+    "lossBody": "La ganancia de las ventas exentas no se suma a ella.",
+    "note": "Cada operación se convierte a {{currency}} al tipo de cambio de su día",
+    "noteFifo": "coste de adquisición de las compras más antiguas",
+    "noteAverage": "coste de adquisición como media ponderada de las compras, tenencia desde las más antiguas",
+    "noteDividends": "los dividendos no forman parte del resultado."
+  },
+  "stats": {
+    "proceeds": "Ingresos por ventas",
+    "sales_one": "{{count}} venta",
+    "sales_many": "{{count}} ventas",
+    "sales_other": "{{count}} ventas",
+    "tickers_one": "{{count}} valor",
+    "tickers_many": "{{count}} valores",
+    "tickers_other": "{{count}} valores",
+    "noSales": "Ninguna venta",
+    "bought": "Comprado",
+    "buys_one": "{{count}} compra",
+    "buys_many": "{{count}} compras",
+    "buys_other": "{{count}} compras",
+    "noBuys": "Ninguna compra",
+    "fees": "Comisiones pagadas",
+    "feesNote": "en compras y ventas · {{percent}} del volumen",
+    "feesNoteBare": "en compras y ventas",
+    "noTrades": "Ninguna operación",
+    "dividends": "Dividendos (brutos)",
+    "payouts_one": "{{count}} pago",
+    "payouts_many": "{{count}} pagos",
+    "payouts_other": "{{count}} pagos",
+    "outsideResult": "fuera del resultado de las ventas",
+    "noPayouts": "Ningún pago"
+  },
+  "tips": {
+    "costMethod": {
+      "label": "Cómo se determina el coste de adquisición",
+      "title": "Cómo determinar el coste de adquisición",
+      "fifo": "<em>Compras más antiguas (FIFO).</em> Cuando vendes parte de una posición, se considera que salen primero las acciones más antiguas. El coste de adquisición es lo que pagaste exactamente por ellas.",
+      "average": "<em>Media ponderada.</em> Cada acción vendida cuesta el precio medio de todas las que tenías antes de la venta. Así calcula el resto de Moony la ganancia realizada, solo que sin comisiones, por lo que puede diferir de este informe.",
+      "choose": "Las normas fiscales difieren en qué método admiten. Elige el que usas en tu declaración. El plazo de tenencia se cuenta en ambos casos desde las compras más antiguas."
+    },
+    "holdingTest": {
+      "label": "Qué es el plazo de tenencia",
+      "title": "Plazo de tenencia",
+      "what": "En algunos países la ganancia por vender acciones no tributa si las mantuviste más de un plazo determinado. El plazo varía según el país, y algunos no tienen esta regla.",
+      "when": "Actívalo solo si se aplica a ti y ajusta el plazo según tus propias normas: elige uno de la lista o Personalizado… e introdúcelo en meses. El informe divide entonces las acciones vendidas en exentas y sujetas a impuestos.",
+      "tax": "Moony no calcula el impuesto en sí. Una pérdida de una venta exenta no reduce el resultado sujeto a impuestos."
+    },
+    "fx": {
+      "label": "Cómo se convierte la moneda",
+      "title": "Conversión a {{currency}}",
+      "rate": "La compra y la venta se convierten cada una al tipo del BCE de su día, así que el resultado incluye también el movimiento del tipo de cambio.",
+      "return": "La declaración puede exigir otro tipo de cambio, por ejemplo el tipo diario o anual de tu banco central. La diferencia suele ser pequeña."
+    },
+    "dividends": {
+      "label": "Explicación: dividendos (brutos)",
+      "title": "Dividendos",
+      "body": "Dividendos brutos antes de la retención, convertidos a {{currency}}. Tributan de forma distinta a las ventas, por eso no están en el resultado de las ventas."
+    }
+  }
+}

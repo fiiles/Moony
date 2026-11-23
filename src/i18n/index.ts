@@ -32,6 +32,7 @@ import enMilestones from './locales/en/milestones.json';
 import enMobile from './locales/en/mobile.json';
 import enSpendingPlans from './locales/en/spending_plans.json';
 import enDeviceSync from './locales/en/deviceSync.json';
+import enStockTransactions from './locales/en/stockTransactions.json';
 
 import {
   LANGUAGES,
@@ -68,6 +69,7 @@ export const NAMESPACES = [
   'mobile',
   'spending_plans',
   'deviceSync',
+  'stockTransactions',
 ] as const;
 
 export type Namespace = (typeof NAMESPACES)[number];
@@ -95,6 +97,7 @@ const resources = {
     mobile: enMobile,
     spending_plans: enSpendingPlans,
     deviceSync: enDeviceSync,
+    stockTransactions: enStockTransactions,
   },
 };
 

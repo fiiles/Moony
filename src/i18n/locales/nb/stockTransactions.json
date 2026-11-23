@@ -1,0 +1,115 @@
+{
+  "title": "Aksjetransaksjoner",
+  "subtitle": "Kjøp, salg og resultatet av salg for valgt periode. Et grunnlag for skatten, ikke en skattemelding.",
+  "period": {
+    "label": "Periode",
+    "year": "År",
+    "custom": "Egen periode",
+    "prevYear": "Forrige år",
+    "nextYear": "Neste år",
+    "from": "Fra",
+    "to": "Til",
+    "rangeOrder": "Fra kan ikke være etter Til.",
+    "yearToDate": "{{year}} · til i dag",
+    "range": "{{from}} – {{to}}"
+  },
+  "empty": {
+    "title": "Ingen aksjehandler ennå",
+    "description": "Når du registrerer et kjøp eller salg av en aksje, viser rapporten resultatet av salgene for valgt periode.",
+    "action": "Åpne aksjer"
+  },
+  "hero": {
+    "label": "Resultat av salg · {{period}}",
+    "ofCosts": "av kostnadene",
+    "sales_one": "{{count}} salg, {{profit}} med gevinst og {{loss}} med tap",
+    "sales_other": "{{count}} salg, {{profit}} med gevinst og {{loss}} med tap",
+    "noSales": "Du solgte ingenting i denne perioden.",
+    "exempt": "Fritatt etter eiertidstesten {{amount}}"
+  },
+  "settings": {
+    "costMethod": "Anskaffelseskost",
+    "fifo": "Eldste kjøp",
+    "average": "Vektet snitt",
+    "holdingTest": "Eiertidstest",
+    "length": "Eiertid for eiertidstesten",
+    "custom": "Egen…",
+    "customMonths": "Eiertid i måneder",
+    "monthsUnit": "mnd.",
+    "invalidMonths": "Skriv inn et helt antall måneder fra 1 til 600."
+  },
+  "length": {
+    "months_one": "{{count}} måned",
+    "months_other": "{{count}} måneder",
+    "years_one": "{{count}} år",
+    "years_other": "{{count}} år"
+  },
+  "summary": {
+    "title": "Inntekter, anskaffelseskost og resultat",
+    "proceeds": "Salgsinntekter",
+    "cost": "Anskaffelseskost",
+    "result": "Resultat",
+    "fees": "Gebyrer",
+    "resultAfterFees": "Resultat etter gebyrer",
+    "taxable": "Skattepliktig",
+    "taxableNote": "solgte aksjer eid i høyst {{length}}",
+    "exempt": "Fritatt etter eiertidstesten",
+    "exemptNote": "solgte aksjer eid i mer enn {{length}}",
+    "total": "Totalt",
+    "all": "Alle salg",
+    "allNote": "uten eiertidstest",
+    "lossTitle": "De skattepliktige salgene endte med tap",
+    "lossBody": "Gevinsten fra fritatte salg legges ikke sammen med det.",
+    "note": "Hver handel regnes om til {{currency}} etter kursen på sin dag",
+    "noteFifo": "anskaffelseskost fra de eldste kjøpene",
+    "noteAverage": "anskaffelseskost som vektet snitt av kjøpene, eiertid fra de eldste",
+    "noteDividends": "utbytte regnes ikke med i resultatet."
+  },
+  "stats": {
+    "proceeds": "Salgsinntekter",
+    "sales_one": "{{count}} salg",
+    "sales_other": "{{count}} salg",
+    "tickers_one": "{{count}} aksje",
+    "tickers_other": "{{count}} aksjer",
+    "noSales": "Ingen salg",
+    "bought": "Kjøpt",
+    "buys_one": "{{count}} kjøp",
+    "buys_other": "{{count}} kjøp",
+    "noBuys": "Ingen kjøp",
+    "fees": "Betalte gebyrer",
+    "feesNote": "for kjøp og salg · {{percent}} av volumet",
+    "feesNoteBare": "for kjøp og salg",
+    "noTrades": "Ingen handler",
+    "dividends": "Utbytte (brutto)",
+    "payouts_one": "{{count}} utbetaling",
+    "payouts_other": "{{count}} utbetalinger",
+    "outsideResult": "utenfor resultatet av salg",
+    "noPayouts": "Ingen utbetaling"
+  },
+  "tips": {
+    "costMethod": {
+      "label": "Slik fastsettes anskaffelseskosten",
+      "title": "Slik fastsetter du anskaffelseskosten",
+      "fifo": "<em>Eldste kjøp (FIFO).</em> Når du selger en del av en beholdning, regnes de eldste aksjene som solgt først. Anskaffelseskosten er det du betalte for akkurat dem.",
+      "average": "<em>Vektet snitt.</em> Hver solgte aksje koster snittprisen av alle aksjene du eide før salget. Slik beregner resten av Moony realisert gevinst, bare uten gebyrer, så den kan avvike fra denne rapporten.",
+      "choose": "Skattereglene er ulike når det gjelder hvilken metode de godtar. Velg den du leverer skattemeldingen etter. Eiertiden for eiertidstesten regnes i begge tilfeller fra de eldste kjøpene."
+    },
+    "holdingTest": {
+      "label": "Hva eiertidstesten er",
+      "title": "Eiertidstest",
+      "what": "I noen land skattlegges ikke gevinst ved salg av aksjer når du har eid dem lenger enn en fastsatt tid. Lengden varierer fra land til land, og noen har ingen slik regel.",
+      "when": "Slå den på bare når den gjelder for deg, og still inn tiden etter dine egne regler: velg en forhåndsvalgt lengde, eller Egen… og skriv den inn i måneder. Rapporten deler da de solgte aksjene i fritatte og skattepliktige.",
+      "tax": "Moony beregner ikke selve skatten. Et tap fra et fritatt salg reduserer ikke det skattepliktige resultatet."
+    },
+    "fx": {
+      "label": "Slik regnes valutaen om",
+      "title": "Omregning til {{currency}}",
+      "rate": "Kjøp og salg regnes hver for seg om etter ESB-kursen på sin dag, så resultatet inkluderer også kursbevegelsen.",
+      "return": "Skattemeldingen kan kreve en annen kurs, for eksempel dags- eller årskursen til sentralbanken din. Forskjellen er vanligvis liten."
+    },
+    "dividends": {
+      "label": "Forklaring: utbytte (brutto)",
+      "title": "Utbytte",
+      "body": "Brutto utbytte før kildeskatt, omregnet til {{currency}}. Det skattlegges annerledes enn salg, derfor er det ikke med i resultatet av salg."
+    }
+  }
+}

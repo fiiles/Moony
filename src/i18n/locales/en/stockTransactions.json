@@ -1,0 +1,115 @@
+{
+  "title": "Stock transactions",
+  "subtitle": "Buys, sales and the result of sales for the chosen period. A basis for your taxes, not a tax return.",
+  "period": {
+    "label": "Period",
+    "year": "Year",
+    "custom": "Custom period",
+    "prevYear": "Previous year",
+    "nextYear": "Next year",
+    "from": "From",
+    "to": "To",
+    "rangeOrder": "From must not be later than To.",
+    "yearToDate": "{{year}} · to date",
+    "range": "{{from}} – {{to}}"
+  },
+  "empty": {
+    "title": "No stock trades yet",
+    "description": "Once you record a buy or a sale of a stock, this report shows the result of your sales for the chosen period.",
+    "action": "Open stocks"
+  },
+  "hero": {
+    "label": "Result of sales · {{period}}",
+    "ofCosts": "of costs",
+    "sales_one": "{{count}} sale, {{profit}} in profit and {{loss}} at a loss",
+    "sales_other": "{{count}} sales, {{profit}} in profit and {{loss}} at a loss",
+    "noSales": "You sold nothing in this period.",
+    "exempt": "Exempt by the holding test {{amount}}"
+  },
+  "settings": {
+    "costMethod": "Acquisition cost",
+    "fifo": "Oldest buys",
+    "average": "Weighted average",
+    "holdingTest": "Holding test",
+    "length": "Holding period for the holding test",
+    "custom": "Custom…",
+    "customMonths": "Holding period in months",
+    "monthsUnit": "mo.",
+    "invalidMonths": "Enter a whole number of months from 1 to 600."
+  },
+  "length": {
+    "months_one": "{{count}} month",
+    "months_other": "{{count}} months",
+    "years_one": "{{count}} year",
+    "years_other": "{{count}} years"
+  },
+  "summary": {
+    "title": "Proceeds, acquisition cost and result",
+    "proceeds": "Sale proceeds",
+    "cost": "Acquisition cost",
+    "result": "Result",
+    "fees": "Fees",
+    "resultAfterFees": "Result after fees",
+    "taxable": "Taxable",
+    "taxableNote": "sold shares held at most {{length}}",
+    "exempt": "Exempt by the holding test",
+    "exemptNote": "sold shares held longer than {{length}}",
+    "total": "Total",
+    "all": "All sales",
+    "allNote": "without the holding test",
+    "lossTitle": "Taxable sales ended in a loss",
+    "lossBody": "The gain from exempt sales is not added to it.",
+    "note": "Each trade is converted to {{currency}} at the rate of its own day",
+    "noteFifo": "acquisition cost from the oldest buys",
+    "noteAverage": "acquisition cost is the weighted average of buys, holding period from the oldest",
+    "noteDividends": "dividends are not part of the result."
+  },
+  "stats": {
+    "proceeds": "Sale proceeds",
+    "sales_one": "{{count}} sale",
+    "sales_other": "{{count}} sales",
+    "tickers_one": "{{count}} ticker",
+    "tickers_other": "{{count}} tickers",
+    "noSales": "No sales",
+    "bought": "Bought",
+    "buys_one": "{{count}} buy",
+    "buys_other": "{{count}} buys",
+    "noBuys": "No buys",
+    "fees": "Fees paid",
+    "feesNote": "on buys and sales · {{percent}} of volume",
+    "feesNoteBare": "on buys and sales",
+    "noTrades": "No trades",
+    "dividends": "Dividends (gross)",
+    "payouts_one": "{{count}} payout",
+    "payouts_other": "{{count}} payouts",
+    "outsideResult": "outside the result of sales",
+    "noPayouts": "No payouts"
+  },
+  "tips": {
+    "costMethod": {
+      "label": "How the acquisition cost is set",
+      "title": "How to set the acquisition cost",
+      "fifo": "<em>Oldest buys (FIFO).</em> When you sell part of a position, the oldest shares are taken to go first. The acquisition cost is what you paid for exactly those.",
+      "average": "<em>Weighted average.</em> Each sold share costs the average price of all shares you held before the sale. The rest of Moony computes the realized gain this way, only without fees, so it can differ from this report.",
+      "choose": "Tax rules differ in which method they accept. Choose the one you file your tax return with. The holding period for the holding test counts from the oldest buys either way."
+    },
+    "holdingTest": {
+      "label": "What the holding test is",
+      "title": "Holding test",
+      "what": "Some countries do not tax the gain from a sale of shares when you held them longer than a set period. The length differs by country, and some have no such rule.",
+      "when": "Turn it on only when it applies to you, and set the length by your own rules: pick a preset, or choose Custom… and enter it in months. The report then splits the sold shares into exempt ones and those subject to tax.",
+      "tax": "Moony does not compute the tax itself. A loss from an exempt sale does not lower the taxable result."
+    },
+    "fx": {
+      "label": "How the currency is converted",
+      "title": "Conversion to {{currency}}",
+      "rate": "A buy and a sale are each converted at the ECB rate of their own day, so the result includes the movement of the exchange rate.",
+      "return": "A tax return may require a different rate, for example your central bank's daily or yearly rate. The difference is usually small."
+    },
+    "dividends": {
+      "label": "Explanation: dividends (gross)",
+      "title": "Dividends",
+      "body": "Gross dividends before withholding tax, converted to {{currency}}. They are taxed differently from sales, so they are not in the result of sales."
+    }
+  }
+}

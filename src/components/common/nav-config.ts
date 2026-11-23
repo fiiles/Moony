@@ -19,6 +19,7 @@ import {
   Landmark,
   LayoutDashboard,
   LineChart,
+  Receipt,
   Repeat,
   Settings,
   Shield,
@@ -131,6 +132,13 @@ export const NAV_GROUPS: NavGroup[] = [
         prefKey: 'investments',
       },
       {
+        id: 'stockTransactions',
+        labelKey: 'nav.stockTransactions',
+        url: '/reports/stock-transactions',
+        icon: Receipt,
+        prefKey: 'investments',
+      },
+      {
         id: 'stockMonitor',
         labelKey: 'nav.stockMonitor',
         url: '/stock-monitor',
@@ -184,7 +192,7 @@ export function visibleItems(
 
 /**
  * One Settings toggle per flag, in sidebar order: the first item carrying a
- * flag names the toggle (Stocks also hides Stock analysis and Stock monitor).
+ * flag names the toggle (Stocks also hides Stock analysis, Stock transactions and Stock monitor).
  */
 export function menuToggleItems(): (NavItem & { prefKey: MenuPrefKey })[] {
   const seen = new Set<MenuPrefKey>();
@@ -236,7 +244,7 @@ export const SIDEBAR_GROUPS_STORAGE_KEY = 'moony-sidebar-groups';
 
 /**
  * Groups closed until the user opens them (README §5: Tools is collapsed by
- * default so the 17 items fit a 900 px window). A group that contains the
+ * default so the 18 items fit a 900 px window). A group that contains the
  * active page always opens.
  */
 export const DEFAULT_COLLAPSED_GROUPS: ReadonlySet<string> = new Set(['tools']);

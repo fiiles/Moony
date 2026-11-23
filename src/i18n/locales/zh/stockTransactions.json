@@ -1,0 +1,108 @@
+{
+  "title": "股票交易",
+  "subtitle": "所选期间的买入、卖出和卖出盈亏。用于报税参考，并非纳税申报表。",
+  "period": {
+    "label": "期间",
+    "year": "年份",
+    "custom": "自定义期间",
+    "prevYear": "上一年",
+    "nextYear": "下一年",
+    "from": "从",
+    "to": "至",
+    "rangeOrder": "开始日期不能晚于结束日期。",
+    "yearToDate": "{{year}} · 截至今天",
+    "range": "{{from}} – {{to}}"
+  },
+  "empty": {
+    "title": "还没有股票交易",
+    "description": "记录一笔股票买入或卖出后，此报告会显示所选期间的卖出盈亏。",
+    "action": "打开股票"
+  },
+  "hero": {
+    "label": "卖出盈亏 · {{period}}",
+    "ofCosts": "相对成本",
+    "sales_other": "{{count}} 笔卖出，{{profit}} 笔盈利，{{loss}} 笔亏损",
+    "noSales": "此期间您没有卖出。",
+    "exempt": "持有期满免税 {{amount}}"
+  },
+  "settings": {
+    "costMethod": "取得成本",
+    "fifo": "最早买入",
+    "average": "加权平均",
+    "holdingTest": "持有期测试",
+    "length": "持有期测试的期限",
+    "custom": "自定义…",
+    "customMonths": "持有期（月）",
+    "monthsUnit": "个月",
+    "invalidMonths": "请输入 1 到 600 之间的整数月数。"
+  },
+  "length": {
+    "months_other": "{{count}} 个月",
+    "years_other": "{{count}} 年"
+  },
+  "summary": {
+    "title": "卖出收入、取得成本和盈亏",
+    "proceeds": "卖出收入",
+    "cost": "取得成本",
+    "result": "盈亏",
+    "fees": "费用",
+    "resultAfterFees": "扣费后盈亏",
+    "taxable": "应税",
+    "taxableNote": "持有不超过 {{length}} 的已售股份",
+    "exempt": "持有期满免税",
+    "exemptNote": "持有超过 {{length}} 的已售股份",
+    "total": "合计",
+    "all": "全部卖出",
+    "allNote": "不做持有期测试",
+    "lossTitle": "应税卖出出现亏损",
+    "lossBody": "免税卖出的收益不与其相加。",
+    "note": "每笔交易均按当日汇率换算为 {{currency}}",
+    "noteFifo": "取得成本按最早买入计算",
+    "noteAverage": "取得成本为买入的加权平均，持有期从最早买入算起",
+    "noteDividends": "股息不计入盈亏。"
+  },
+  "stats": {
+    "proceeds": "卖出收入",
+    "sales_other": "{{count}} 笔卖出",
+    "tickers_other": "{{count}} 只证券",
+    "noSales": "无卖出",
+    "bought": "买入额",
+    "buys_other": "{{count}} 笔买入",
+    "noBuys": "无买入",
+    "fees": "已付费用",
+    "feesNote": "买入和卖出 · 占交易额 {{percent}}",
+    "feesNoteBare": "买入和卖出",
+    "noTrades": "无交易",
+    "dividends": "股息（税前）",
+    "payouts_other": "{{count}} 笔派息",
+    "outsideResult": "不计入卖出盈亏",
+    "noPayouts": "无派息"
+  },
+  "tips": {
+    "costMethod": {
+      "label": "取得成本如何确定",
+      "title": "如何确定取得成本",
+      "fifo": "<em>最早买入（FIFO）。</em>卖出部分持仓时，视为最早买入的股份先卖出。取得成本就是您为这些股份支付的金额。",
+      "average": "<em>加权平均。</em>每股卖出股份的成本为卖出前所持全部股份的平均价格。Moony 的其他页面按此方法计算已实现收益，但不含费用，因此可能与本报告不同。",
+      "choose": "不同税务规则接受的方法各不相同。请选择您申报时使用的方法。持有期测试的期限在两种情况下都从最早买入算起。"
+    },
+    "holdingTest": {
+      "label": "什么是持有期测试",
+      "title": "持有期测试",
+      "what": "在一些国家，股票持有超过规定期限后，卖出收益免税。期限因国家而异，有些国家没有此规定。",
+      "when": "仅在适用于您时开启，并按适用于您的规则设置期限：从列表中选择，或选择“自定义…”并以月为单位输入。报告随后会将已售股份分为免税和应税两部分。",
+      "tax": "Moony 不计算税额本身。免税卖出的亏损不会减少应税盈亏。"
+    },
+    "fx": {
+      "label": "货币如何换算",
+      "title": "换算为 {{currency}}",
+      "rate": "买入和卖出各自按当日的欧洲央行汇率换算，因此盈亏也包含汇率变动。",
+      "return": "纳税申报可能要求使用其他汇率，例如央行的每日汇率或年度汇率。差异通常很小。"
+    },
+    "dividends": {
+      "label": "说明：股息（税前）",
+      "title": "股息",
+      "body": "预扣税前的股息总额，已换算为 {{currency}}。股息的征税方式与卖出不同，因此不计入卖出盈亏。"
+    }
+  }
+}

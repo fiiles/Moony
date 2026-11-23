@@ -1,0 +1,122 @@
+{
+  "title": "Akciové transakce",
+  "subtitle": "Nákupy, prodeje a výsledek z prodejů za zvolené období. Podklad pro daně, ne daňové přiznání.",
+  "period": {
+    "label": "Období",
+    "year": "Rok",
+    "custom": "Vlastní období",
+    "prevYear": "Předchozí rok",
+    "nextYear": "Další rok",
+    "from": "Od",
+    "to": "Do",
+    "rangeOrder": "Od nesmí být později než Do.",
+    "yearToDate": "{{year}} · do dneška",
+    "range": "{{from}} – {{to}}"
+  },
+  "empty": {
+    "title": "Zatím žádné obchody s akciemi",
+    "description": "Až zapíšete nákup nebo prodej akcie, report tu ukáže výsledek z prodejů za zvolené období.",
+    "action": "Otevřít akcie"
+  },
+  "hero": {
+    "label": "Výsledek z prodejů · {{period}}",
+    "ofCosts": "k výdajům",
+    "sales_one": "{{count}} prodej, {{profit}} v zisku a {{loss}} ve ztrátě",
+    "sales_few": "{{count}} prodeje, {{profit}} v zisku a {{loss}} ve ztrátě",
+    "sales_other": "{{count}} prodejů, {{profit}} v zisku a {{loss}} ve ztrátě",
+    "noSales": "V tomto období jste nic neprodali.",
+    "exempt": "Osvobozeno časovým testem {{amount}}"
+  },
+  "settings": {
+    "costMethod": "Nabývací cena",
+    "fifo": "Nejstarší nákupy",
+    "average": "Vážený průměr",
+    "holdingTest": "Časový test",
+    "length": "Doba držení pro časový test",
+    "custom": "Vlastní…",
+    "customMonths": "Doba držení v měsících",
+    "monthsUnit": "měs.",
+    "invalidMonths": "Zadejte celý počet měsíců od 1 do 600."
+  },
+  "length": {
+    "months_one": "{{count}} měsíc",
+    "months_few": "{{count}} měsíce",
+    "months_other": "{{count}} měsíců",
+    "years_one": "{{count}} rok",
+    "years_few": "{{count}} roky",
+    "years_other": "{{count}} let"
+  },
+  "summary": {
+    "title": "Příjmy, nabývací cena a výsledek",
+    "proceeds": "Příjmy z prodeje",
+    "cost": "Nabývací cena",
+    "result": "Výsledek",
+    "fees": "Poplatky",
+    "resultAfterFees": "Výsledek po poplatcích",
+    "taxable": "Podléhá dani",
+    "taxableNote": "prodané kusy držené nejvýše {{length}}",
+    "exempt": "Osvobozeno časovým testem",
+    "exemptNote": "prodané kusy držené déle než {{length}}",
+    "total": "Celkem",
+    "all": "Všechny prodeje",
+    "allNote": "bez časového testu",
+    "lossTitle": "Zdanitelné prodeje skončily ve ztrátě",
+    "lossBody": "Zisk z osvobozených prodejů se s ní nesčítá.",
+    "note": "Každý obchod je přepočten na {{currency}} kurzem ze dne obchodu",
+    "noteFifo": "nabývací cena se bere od nejstarších nákupů",
+    "noteAverage": "nabývací cena je vážený průměr nákupů, doba držení se bere od nejstarších",
+    "noteDividends": "dividendy se do výsledku nepočítají."
+  },
+  "stats": {
+    "proceeds": "Příjmy z prodeje",
+    "sales_one": "{{count}} prodej",
+    "sales_few": "{{count}} prodeje",
+    "sales_other": "{{count}} prodejů",
+    "tickers_one": "{{count}} titul",
+    "tickers_few": "{{count}} tituly",
+    "tickers_other": "{{count}} titulů",
+    "noSales": "Žádný prodej",
+    "bought": "Nakoupeno",
+    "buys_one": "{{count}} nákup",
+    "buys_few": "{{count}} nákupy",
+    "buys_other": "{{count}} nákupů",
+    "noBuys": "Žádný nákup",
+    "fees": "Zaplacené poplatky",
+    "feesNote": "za nákupy i prodeje · {{percent}} objemu",
+    "feesNoteBare": "za nákupy i prodeje",
+    "noTrades": "Žádná transakce",
+    "dividends": "Dividendy (hrubé)",
+    "payouts_one": "{{count}} výplata",
+    "payouts_few": "{{count}} výplaty",
+    "payouts_other": "{{count}} výplat",
+    "outsideResult": "mimo výsledek z prodejů",
+    "noPayouts": "Žádná výplata"
+  },
+  "tips": {
+    "costMethod": {
+      "label": "Jak se určuje nabývací cena",
+      "title": "Jak určit nabývací cenu",
+      "fifo": "<em>Nejstarší nákupy (FIFO).</em> Když prodáte část pozice, bere se, že šly nejdřív nejstarší kusy. Nabývací cenou je to, co jste zaplatili právě za ně.",
+      "average": "<em>Vážený průměr.</em> Každý prodaný kus má průměrnou cenu všech kusů, které jste před prodejem drželi. Takhle počítá realizovaný zisk zbytek Moony, jen bez poplatků, takže se od tohoto reportu může lišit.",
+      "choose": "Daňová pravidla se liší v tom, který postup připouštějí. Zvolte ten, podle kterého podáváte daňové přiznání. Doba držení pro časový test se v obou případech bere od nejstarších nákupů."
+    },
+    "holdingTest": {
+      "label": "Co je časový test",
+      "title": "Časový test",
+      "what": "V některých zemích se zisk z prodeje akcií nedaní, když je držíte déle než stanovenou dobu. Délka se mezi zeměmi liší a některé takové pravidlo nemají.",
+      "when": "Zapněte ho jen tehdy, když platí pro vás, a nastavte dobu podle svých pravidel: vyberte ji z nabídky, nebo zvolte Vlastní a zadejte ji v měsících. Report pak prodané kusy rozdělí na osvobozené a ty, které dani podléhají.",
+      "tax": "Daň samotnou Moony nepočítá. Ztráta z osvobozeného prodeje zdanitelný výsledek nesnižuje."
+    },
+    "fx": {
+      "label": "Jak se přepočítává měna",
+      "title": "Přepočet na {{currency}}",
+      "rate": "Nákup i prodej se přepočítají kurzem ECB ze svého dne, takže ve výsledku je i pohyb kurzu.",
+      "return": "Daňové přiznání může chtít jiný kurz, například denní nebo roční kurz vaší centrální banky. Rozdíl bývá malý."
+    },
+    "dividends": {
+      "label": "Vysvětlení: Dividendy (hrubé)",
+      "title": "Dividendy",
+      "body": "Hrubé dividendy před srážkovou daní, přepočtené na {{currency}}. Daní se jinak než prodeje, proto ve výsledku z prodejů nejsou."
+    }
+  }
+}

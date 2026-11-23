@@ -1,0 +1,122 @@
+{
+  "title": "Operazioni su azioni",
+  "subtitle": "Acquisti, vendite e risultato delle vendite nel periodo scelto. Una base per le tasse, non una dichiarazione dei redditi.",
+  "period": {
+    "label": "Periodo",
+    "year": "Anno",
+    "custom": "Periodo personalizzato",
+    "prevYear": "Anno precedente",
+    "nextYear": "Anno successivo",
+    "from": "Dal",
+    "to": "Al",
+    "rangeOrder": "Dal non può essere dopo Al.",
+    "yearToDate": "{{year}} · a oggi",
+    "range": "{{from}} – {{to}}"
+  },
+  "empty": {
+    "title": "Ancora nessuna operazione su azioni",
+    "description": "Quando registri un acquisto o una vendita di un'azione, questo report mostra il risultato delle vendite nel periodo scelto.",
+    "action": "Apri azioni"
+  },
+  "hero": {
+    "label": "Risultato delle vendite · {{period}}",
+    "ofCosts": "sui costi",
+    "sales_one": "{{count}} vendita, {{profit}} in utile e {{loss}} in perdita",
+    "sales_many": "{{count}} vendite, {{profit}} in utile e {{loss}} in perdita",
+    "sales_other": "{{count}} vendite, {{profit}} in utile e {{loss}} in perdita",
+    "noSales": "In questo periodo non hai venduto nulla.",
+    "exempt": "Esente per periodo di detenzione {{amount}}"
+  },
+  "settings": {
+    "costMethod": "Costo di acquisto",
+    "fifo": "Acquisti più vecchi",
+    "average": "Media ponderata",
+    "holdingTest": "Periodo di detenzione",
+    "length": "Durata per il periodo di detenzione",
+    "custom": "Personalizzato…",
+    "customMonths": "Durata della detenzione in mesi",
+    "monthsUnit": "mesi",
+    "invalidMonths": "Inserisci un numero intero di mesi da 1 a 600."
+  },
+  "length": {
+    "months_one": "{{count}} mese",
+    "months_many": "{{count}} mesi",
+    "months_other": "{{count}} mesi",
+    "years_one": "{{count}} anno",
+    "years_many": "{{count}} anni",
+    "years_other": "{{count}} anni"
+  },
+  "summary": {
+    "title": "Ricavi, costo di acquisto e risultato",
+    "proceeds": "Ricavi dalle vendite",
+    "cost": "Costo di acquisto",
+    "result": "Risultato",
+    "fees": "Commissioni",
+    "resultAfterFees": "Risultato dopo commissioni",
+    "taxable": "Soggetto a imposta",
+    "taxableNote": "azioni vendute detenute al massimo {{length}}",
+    "exempt": "Esente per periodo di detenzione",
+    "exemptNote": "azioni vendute detenute per più di {{length}}",
+    "total": "Totale",
+    "all": "Tutte le vendite",
+    "allNote": "senza periodo di detenzione",
+    "lossTitle": "Le vendite soggette a imposta si sono chiuse in perdita",
+    "lossBody": "L'utile delle vendite esenti non si somma ad essa.",
+    "note": "Ogni operazione è convertita in {{currency}} al cambio del suo giorno",
+    "noteFifo": "costo di acquisto dagli acquisti più vecchi",
+    "noteAverage": "costo di acquisto come media ponderata degli acquisti, detenzione dai più vecchi",
+    "noteDividends": "i dividendi non rientrano nel risultato."
+  },
+  "stats": {
+    "proceeds": "Ricavi dalle vendite",
+    "sales_one": "{{count}} vendita",
+    "sales_many": "{{count}} vendite",
+    "sales_other": "{{count}} vendite",
+    "tickers_one": "{{count}} titolo",
+    "tickers_many": "{{count}} titoli",
+    "tickers_other": "{{count}} titoli",
+    "noSales": "Nessuna vendita",
+    "bought": "Acquistato",
+    "buys_one": "{{count}} acquisto",
+    "buys_many": "{{count}} acquisti",
+    "buys_other": "{{count}} acquisti",
+    "noBuys": "Nessun acquisto",
+    "fees": "Commissioni pagate",
+    "feesNote": "su acquisti e vendite · {{percent}} del volume",
+    "feesNoteBare": "su acquisti e vendite",
+    "noTrades": "Nessuna operazione",
+    "dividends": "Dividendi (lordi)",
+    "payouts_one": "{{count}} pagamento",
+    "payouts_many": "{{count}} pagamenti",
+    "payouts_other": "{{count}} pagamenti",
+    "outsideResult": "fuori dal risultato delle vendite",
+    "noPayouts": "Nessun pagamento"
+  },
+  "tips": {
+    "costMethod": {
+      "label": "Come si determina il costo di acquisto",
+      "title": "Come determinare il costo di acquisto",
+      "fifo": "<em>Acquisti più vecchi (FIFO).</em> Quando vendi parte di una posizione, si considera che escano prima le azioni più vecchie. Il costo di acquisto è quanto hai pagato proprio per quelle.",
+      "average": "<em>Media ponderata.</em> Ogni azione venduta costa il prezzo medio di tutte quelle che detenevi prima della vendita. Così il resto di Moony calcola l'utile realizzato, solo senza commissioni, quindi può differire da questo report.",
+      "choose": "Le regole fiscali differiscono nel metodo che ammettono. Scegli quello con cui presenti la dichiarazione. Il periodo di detenzione si conta in entrambi i casi dagli acquisti più vecchi."
+    },
+    "holdingTest": {
+      "label": "Cos'è il periodo di detenzione",
+      "title": "Periodo di detenzione",
+      "what": "In alcuni paesi l'utile dalla vendita di azioni non è tassato se le hai detenute più a lungo di un periodo stabilito. La durata varia da paese a paese e alcuni non hanno questa regola.",
+      "when": "Attivalo solo se vale per te e imposta la durata secondo le tue regole: scegline una dall'elenco oppure Personalizzato… e inseriscila in mesi. Il report divide poi le azioni vendute in esenti e soggette a imposta.",
+      "tax": "Moony non calcola l'imposta. Una perdita da una vendita esente non riduce il risultato soggetto a imposta."
+    },
+    "fx": {
+      "label": "Come si converte la valuta",
+      "title": "Conversione in {{currency}}",
+      "rate": "Acquisto e vendita sono convertiti ciascuno al cambio BCE del proprio giorno, quindi il risultato include anche il movimento del cambio.",
+      "return": "La dichiarazione può richiedere un altro cambio, per esempio il cambio giornaliero o annuale della tua banca centrale. La differenza di solito è piccola."
+    },
+    "dividends": {
+      "label": "Spiegazione: dividendi (lordi)",
+      "title": "Dividendi",
+      "body": "Dividendi lordi prima della ritenuta, convertiti in {{currency}}. Sono tassati diversamente dalle vendite, per questo non rientrano nel risultato delle vendite."
+    }
+  }
+}
